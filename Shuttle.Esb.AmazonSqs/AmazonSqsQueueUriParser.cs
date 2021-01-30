@@ -33,12 +33,14 @@ namespace Shuttle.Esb.AmazonSqs
             var queryString = new QueryString(uri);
 
             SetMaxMessages(queryString);
+            SetWaitTimeSeconds(queryString);
         }
 
         public Uri Uri { get; }
         public string StorageConnectionStringName { get; }
         public string QueueName { get; }
         public int MaxMessages { get; private set; }
+        public int WaitTimeSeconds { get; private set; } 
 
         private void SetMaxMessages(QueryString queryString)
         {
@@ -64,6 +66,33 @@ namespace Shuttle.Esb.AmazonSqs
                 }
 
                 MaxMessages = result;
+            }
+        }
+
+        private void SetWaitTimeSeconds(QueryString queryString)
+        {
+            WaitTimeSeconds = 20;
+
+            var parameter = queryString["waitTimeSeconds"];
+
+            if (parameter == null)
+            {
+                return;
+            }
+
+            if (int.TryParse(parameter, out var result))
+            {
+                if (result < 0)
+                {
+                    result = 0;
+                }
+
+                if (result > 20)
+                {
+                    result = 20;
+                }
+
+                WaitTimeSeconds = result;
             }
         }
     }

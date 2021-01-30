@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using Shuttle.Core.Contract;
@@ -13,13 +14,10 @@ namespace Shuttle.Esb.AmazonSqs
         private readonly Dictionary<string, AcknowledgementToken> _acknowledgementTokens =
             new Dictionary<string, AcknowledgementToken>();
 
+        private readonly CancellationToken _cancellationToken;
+
         private readonly AmazonSQSClient _client;
-        private readonly object _lock = new object();
-        private readonly int _maxMessages;
-        private readonly string _queueName;
-        private string _queueUrl;
-        private bool _queueUrlResolved;
-        private readonly Queue<ReceivedMessage> _receivedMessages = new Queue<ReceivedMessage>();
+
         private readonly List<string> _isEmptyAttributeNames = new List<string>
         {
             "ApproximateNumberOfMessages",
@@ -27,10 +25,21 @@ namespace Shuttle.Esb.AmazonSqs
             "ApproximateNumberOfMessagesNotVisible"
         };
 
-        public AmazonSqsQueue(Uri uri, IAmazonSqsConfiguration configuration)
+        private readonly object _lock = new object();
+        private readonly int _maxMessages;
+        private readonly int _waitTimeSeconds;
+        private readonly string _queueName;
+        private readonly Queue<ReceivedMessage> _receivedMessages = new Queue<ReceivedMessage>();
+        private string _queueUrl;
+        private bool _queueUrlResolved;
+
+        public AmazonSqsQueue(Uri uri, IAmazonSqsConfiguration configuration,
+            CancellationToken cancellationToken = default)
         {
             Guard.AgainstNull(uri, nameof(uri));
             Guard.AgainstNull(configuration, nameof(configuration));
+
+            _cancellationToken = cancellationToken;
 
             Uri = uri;
 
@@ -39,31 +48,9 @@ namespace Shuttle.Esb.AmazonSqs
             _queueName = parser.QueueName;
             _client = new AmazonSQSClient(configuration.GetConfiguration(uri.Host));
             _maxMessages = parser.MaxMessages;
-            
+            _waitTimeSeconds = parser.WaitTimeSeconds;
+
             GetQueueUrl();
-        }
-
-        private void GetQueueUrl()
-        {
-            try
-            {
-                _queueUrlResolved = false;
-
-                _queueUrl = _client.GetQueueUrlAsync(new GetQueueUrlRequest
-                {
-                    QueueName = _queueName
-                }).Result.QueueUrl;
-
-                _queueUrlResolved = !string.IsNullOrWhiteSpace(_queueUrl);
-            }
-            catch (Exception ex)
-            {
-                if (ex.InnerException != null &&
-                    !ex.InnerException.Message.Contains("NonExistentQueue"))
-                {
-                    throw;
-                }
-            }
         }
 
         public void Create()
@@ -71,7 +58,7 @@ namespace Shuttle.Esb.AmazonSqs
             lock (_lock)
             {
                 _client.CreateQueueAsync(new CreateQueueRequest {QueueName = _queueName}).Wait();
-                
+
                 GetQueueUrl();
             }
         }
@@ -87,7 +74,8 @@ namespace Shuttle.Esb.AmazonSqs
             {
                 foreach (var acknowledgementToken in _acknowledgementTokens.Values)
                 {
-                    _client.SendMessageAsync(new SendMessageRequest{QueueUrl = _queueUrl, MessageBody = acknowledgementToken.MessageBody }).Wait();
+                    _client.SendMessageAsync(
+                        new SendMessageRequest {QueueUrl = _queueUrl, MessageBody = acknowledgementToken.MessageBody}).Wait();
                     _client.DeleteMessageAsync(_queueUrl, acknowledgementToken.ReceiptHandle).Wait();
                 }
 
@@ -134,9 +122,8 @@ namespace Shuttle.Esb.AmazonSqs
                     {
                         QueueUrl = _queueUrl,
                         AttributeNames = _isEmptyAttributeNames
-                    })
-                    .Result;
-                return response.ApproximateNumberOfMessages == 0 && 
+                    }).Result;
+                return response.ApproximateNumberOfMessages == 0 &&
                        response.ApproximateNumberOfMessagesDelayed == 0 &&
                        response.ApproximateNumberOfMessagesNotVisible == 0;
             }
@@ -155,31 +142,33 @@ namespace Shuttle.Esb.AmazonSqs
             }).Wait();
         }
 
-        private void GuardAgainstUnresolvedQueueUrl()
+        public ReceivedMessage GetMessage()
         {
             if (!_queueUrlResolved)
             {
-                throw new ApplicationException(string.Format(Resources.QueueUrlNotResolvedException, _queueName));
+                return null;
             }
-        }
 
-        public ReceivedMessage GetMessage()
-        {
-            lock (_lock)
+            if (_receivedMessages.Count == 0)
             {
-                if (!_queueUrlResolved)
+                ReceiveMessageResponse messages;
+
+                try
+                {
+                    messages = _client.ReceiveMessageAsync(new ReceiveMessageRequest
+                    {
+                        QueueUrl = _queueUrl,
+                        MaxNumberOfMessages = _maxMessages,
+                        WaitTimeSeconds = _waitTimeSeconds
+                    }, _cancellationToken).Result;
+                }
+                catch
                 {
                     return null;
                 }
-                
-                if (_receivedMessages.Count == 0)
-                {
-                    var messages = _client.ReceiveMessageAsync(new ReceiveMessageRequest
-                    {
-                        QueueUrl = _queueUrl,
-                        MaxNumberOfMessages = _maxMessages
-                    }).Result;
 
+                lock (_lock)
+                {
                     foreach (var message in messages.Messages)
                     {
                         var acknowledgementToken =
@@ -192,9 +181,9 @@ namespace Shuttle.Esb.AmazonSqs
                             acknowledgementToken));
                     }
                 }
-
-                return _receivedMessages.Count > 0 ? _receivedMessages.Dequeue() : null;
             }
+
+            return _receivedMessages.Count > 0 ? _receivedMessages.Dequeue() : null;
         }
 
         public void Acknowledge(object acknowledgementToken)
@@ -221,7 +210,7 @@ namespace Shuttle.Esb.AmazonSqs
         public void Release(object acknowledgementToken)
         {
             GuardAgainstUnresolvedQueueUrl();
-            
+
             Guard.AgainstNull(acknowledgementToken, nameof(acknowledgementToken));
 
             if (!(acknowledgementToken is AcknowledgementToken data))
@@ -236,7 +225,7 @@ namespace Shuttle.Esb.AmazonSqs
                     QueueUrl = _queueUrl,
                     MessageBody = data.MessageBody
                 }).Wait();
-                
+
                 _client.DeleteMessageAsync(_queueUrl, data.ReceiptHandle).Wait();
 
                 if (_acknowledgementTokens.ContainsKey(data.MessageId))
@@ -247,6 +236,37 @@ namespace Shuttle.Esb.AmazonSqs
         }
 
         public Uri Uri { get; }
+
+        private void GetQueueUrl()
+        {
+            try
+            {
+                _queueUrlResolved = false;
+
+                _queueUrl = _client.GetQueueUrlAsync(new GetQueueUrlRequest
+                {
+                    QueueName = _queueName
+                }).Result.QueueUrl;
+
+                _queueUrlResolved = !string.IsNullOrWhiteSpace(_queueUrl);
+            }
+            catch (Exception ex)
+            {
+                if (ex.InnerException != null &&
+                    !ex.InnerException.Message.Contains("NonExistentQueue"))
+                {
+                    throw;
+                }
+            }
+        }
+
+        private void GuardAgainstUnresolvedQueueUrl()
+        {
+            if (!_queueUrlResolved)
+            {
+                throw new ApplicationException(string.Format(Resources.QueueUrlNotResolvedException, _queueName));
+            }
+        }
 
         internal class AcknowledgementToken
         {

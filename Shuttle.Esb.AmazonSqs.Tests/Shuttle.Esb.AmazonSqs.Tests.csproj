@@ -10,7 +10,7 @@
     <PackageReference Include="NUnit3TestAdapter" Version="3.17.0" />
     <PackageReference Include="Shuttle.Core.Ninject" Version="10.0.7" />
     <PackageReference Include="Shuttle.Core.Uris" Version="10.0.5" />
-    <PackageReference Include="Shuttle.Esb.Tests" Version="11.0.4" />
+    <PackageReference Include="Shuttle.Esb.Tests" Version="11.1.0" />
   </ItemGroup>
 
   <ItemGroup>
