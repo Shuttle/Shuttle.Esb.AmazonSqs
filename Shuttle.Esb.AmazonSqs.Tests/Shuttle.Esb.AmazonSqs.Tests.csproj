@@ -16,5 +16,14 @@
   <ItemGroup>
     <ProjectReference Include="..\Shuttle.Esb.AmazonSqs\Shuttle.Esb.AmazonSqs.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="files\AmazonSqs-Grouped.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="files\AmazonSqs.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
   
 </Project>
