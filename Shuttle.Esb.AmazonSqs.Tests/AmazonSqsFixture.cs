@@ -3,21 +3,22 @@ using Moq;
 using Ninject;
 using Shuttle.Core.Container;
 using Shuttle.Core.Ninject;
+using Shuttle.Esb.Tests;
 
 namespace Shuttle.Esb.AmazonSqs.Tests
 {
     public static class AmazonSqsFixture
     {
-        public static Esb.Tests.ComponentContainer GetComponentContainer()
+        public static ComponentContainer GetComponentContainer()
         {
             var container = new NinjectComponentContainer(new StandardKernel());
 
-            container.RegisterInstance(AzureStorageConfiguration());
+            container.RegisterInstance(AmazonSqsConfiguration());
 
-            return new Esb.Tests.ComponentContainer(container, () => container);
+            return new ComponentContainer(container, () => container);
         }
 
-        private static IAmazonSqsConfiguration AzureStorageConfiguration()
+        private static IAmazonSqsConfiguration AmazonSqsConfiguration()
         {
             var mock = new Mock<IAmazonSqsConfiguration>();
 

@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "Shuttle.Esb.AmazonSqs.Tests": {
+      "commandName": "Project"
+    }
+  }
+}

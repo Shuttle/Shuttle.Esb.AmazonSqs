@@ -6,6 +6,13 @@ You may want to take a look at [Messaging Using Amazon SQS](https://docs.aws.ama
 
 ## Configuration
 
+Since an instance of the `IAmazonSqsConfiguration` interface is required remember to register one.  Typically the default implementation will do:
+
+``` c#
+IComponentRegistry.Register<IAmazonSqsConfiguration, DefaultAmazonSqsConfiguration>();
+```
+
+
 The queue configuration is part of the specified uri, e.g.:
 
 ``` xml

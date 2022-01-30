@@ -27,9 +27,9 @@ namespace Shuttle.Esb.AmazonSqs
 
         private readonly object _lock = new object();
         private readonly int _maxMessages;
-        private readonly int _waitTimeSeconds;
         private readonly string _queueName;
         private readonly Queue<ReceivedMessage> _receivedMessages = new Queue<ReceivedMessage>();
+        private readonly int _waitTimeSeconds;
         private string _queueUrl;
         private bool _queueUrlResolved;
 
@@ -57,7 +57,7 @@ namespace Shuttle.Esb.AmazonSqs
         {
             lock (_lock)
             {
-                _client.CreateQueueAsync(new CreateQueueRequest {QueueName = _queueName}).Wait();
+                _client.CreateQueueAsync(new CreateQueueRequest { QueueName = _queueName }).Wait();
 
                 GetQueueUrl();
             }
@@ -75,7 +75,9 @@ namespace Shuttle.Esb.AmazonSqs
                 foreach (var acknowledgementToken in _acknowledgementTokens.Values)
                 {
                     _client.SendMessageAsync(
-                        new SendMessageRequest {QueueUrl = _queueUrl, MessageBody = acknowledgementToken.MessageBody}).Wait();
+                            new SendMessageRequest
+                                { QueueUrl = _queueUrl, MessageBody = acknowledgementToken.MessageBody })
+                        .Wait();
                     _client.DeleteMessageAsync(_queueUrl, acknowledgementToken.ReceiptHandle).Wait();
                 }
 
@@ -92,7 +94,7 @@ namespace Shuttle.Esb.AmazonSqs
                     return;
                 }
 
-                _client.DeleteQueueAsync(new DeleteQueueRequest {QueueUrl = _queueUrl}).Wait();
+                _client.DeleteQueueAsync(new DeleteQueueRequest { QueueUrl = _queueUrl }).Wait();
             }
         }
 
@@ -105,7 +107,7 @@ namespace Shuttle.Esb.AmazonSqs
 
             lock (_lock)
             {
-                _client.PurgeQueueAsync(new PurgeQueueRequest {QueueUrl = _queueUrl}).Wait();
+                _client.PurgeQueueAsync(new PurgeQueueRequest { QueueUrl = _queueUrl }).Wait();
             }
         }
 
@@ -119,10 +121,10 @@ namespace Shuttle.Esb.AmazonSqs
             lock (_lock)
             {
                 var response = _client.GetQueueAttributesAsync(new GetQueueAttributesRequest
-                    {
-                        QueueUrl = _queueUrl,
-                        AttributeNames = _isEmptyAttributeNames
-                    }).Result;
+                {
+                    QueueUrl = _queueUrl,
+                    AttributeNames = _isEmptyAttributeNames
+                }).Result;
                 return response.ApproximateNumberOfMessages == 0 &&
                        response.ApproximateNumberOfMessagesDelayed == 0 &&
                        response.ApproximateNumberOfMessagesNotVisible == 0;
@@ -149,26 +151,26 @@ namespace Shuttle.Esb.AmazonSqs
                 return null;
             }
 
-            if (_receivedMessages.Count == 0)
+            lock (_lock)
             {
-                ReceiveMessageResponse messages;
-
-                try
+                if (_receivedMessages.Count == 0)
                 {
-                    messages = _client.ReceiveMessageAsync(new ReceiveMessageRequest
+                    ReceiveMessageResponse messages;
+
+                    try
                     {
-                        QueueUrl = _queueUrl,
-                        MaxNumberOfMessages = _maxMessages,
-                        WaitTimeSeconds = _waitTimeSeconds
-                    }, _cancellationToken).Result;
-                }
-                catch
-                {
-                    return null;
-                }
+                        messages = _client.ReceiveMessageAsync(new ReceiveMessageRequest
+                        {
+                            QueueUrl = _queueUrl,
+                            MaxNumberOfMessages = _maxMessages,
+                            WaitTimeSeconds = _waitTimeSeconds
+                        }, _cancellationToken).Result;
+                    }
+                    catch
+                    {
+                        return null;
+                    }
 
-                lock (_lock)
-                {
                     foreach (var message in messages.Messages)
                     {
                         var acknowledgementToken =
@@ -181,9 +183,9 @@ namespace Shuttle.Esb.AmazonSqs
                             acknowledgementToken));
                     }
                 }
-            }
 
-            return _receivedMessages.Count > 0 ? _receivedMessages.Dequeue() : null;
+                return _receivedMessages.Count > 0 ? _receivedMessages.Dequeue() : null;
+            }
         }
 
         public void Acknowledge(object acknowledgementToken)
