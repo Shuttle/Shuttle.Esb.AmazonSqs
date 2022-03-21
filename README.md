@@ -1,17 +1,10 @@
-# AmazonSqsQueue
+# Amazon SQS
 
 In order to make use of the `AmazonSqsQueue` you will need access to an [Amazon Web Services](https://aws.amazon.com/sqs/) account.  There are some options for local development which are beyond the scope of this documentation.
 
 You may want to take a look at [Messaging Using Amazon SQS](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/sqs-apis-intro.html).
 
 ## Configuration
-
-Since an instance of the `IAmazonSqsConfiguration` interface is required remember to register one.  Typically the default implementation will do:
-
-``` c#
-IComponentRegistry.Register<IAmazonSqsConfiguration, DefaultAmazonSqsConfiguration>();
-```
-
 
 The queue configuration is part of the specified uri, e.g.:
 
@@ -37,20 +30,24 @@ The queue configuration is part of the specified uri, e.g.:
 AmazonSQSConfig GetConfiguration(string endpointName);
 ```
 
-Should return the [Amazon.SQS.AmazonSQSConfig](https://docs.aws.amazon.com/sdkfornet/v3/apidocs/items/SQS/TSQSConfig.html) instance that will be used by the [AmazonSQSClient](https://docs.aws.amazon.com/sdkfornet/v3/apidocs/items/SQS/TSQSClient.html) to interact with the relevant Amazon SQS queue.
+The `GetConfiguration()` method should return the [Amazon.SQS.AmazonSQSConfig](https://docs.aws.amazon.com/sdkfornet/v3/apidocs/items/SQS/TSQSConfig.html) instance that will be used by the [AmazonSQSClient](https://docs.aws.amazon.com/sdkfornet/v3/apidocs/items/SQS/TSQSClient.html) to interact with the relevant Amazon SQS queue.
+
+The relevant `IAmazonSqsConfiguration` should be registered with the `IComponentRegistry`:
+
+```c#
+IComponentResolver.Register<IAmazonSqsConfiguration, DefaultAmazonSqsConfiguration>;
+```
 
 ## DefaultAmazonSqsConfiguration
-
-The `DefaultAmazonSqsConfiguration` instance implementing the `IAmazonSqsConfiguration` interface will be registered using the [container bootstrapping](http://shuttle.github.io/shuttle-core/overview-container/#Bootstrapping).  If you wish to override the configuration you should register your instance before calling the `ServiceBus.Register()` method.
 
 This implementation will add all the endpoints provided in the application configuration file:
 
 ```xml
 <?xml version="1.0" encoding="utf-8" ?>
 <configuration>
-	<configSections>
-		<section name="amazonsqs" type="Shuttle.Esb.AmazonSqs.AmazonSqsSection, Shuttle.Esb.AmazonSqs"/>
-	</configSections>
+    <configSections>
+        <section name="amazonsqs" type="Shuttle.Esb.AmazonSqs.AmazonSqsSection, Shuttle.Esb.AmazonSqs"/>
+    </configSections>
 
     <amazonsqs>
         <endpoints>

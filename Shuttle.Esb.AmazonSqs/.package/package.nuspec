@@ -3,7 +3,7 @@
 <package>
 	<metadata>
 		<id>Shuttle.Esb.AmazonSqs</id>
-		<version>11.0.1</version>
+		<version>12.0.0</version>
 		<authors>Eben Roux</authors>
 		<owners>Eben Roux</owners>
 		<license type="expression">BSD-3-Clause</license>
@@ -12,12 +12,12 @@
 		<repository type="git" url="https://github.com/Shuttle/Shuttle.Esb.AzureMQ.git" />
 		<projectUrl>https://github.com/Shuttle/Shuttle.Esb.AzureMQ</projectUrl>
 		<description>Amazon Simple Queue Service implementation for use with Shuttle.Esb.</description>
-		<copyright>Copyright (c) 2021, Eben Roux</copyright>
+		<copyright>Copyright (c) 2022, Eben Roux</copyright>
 		<tags>aws sqs amazonsqs amazonmq awssqs awsmq</tags>
 		<dependencies>
-      <dependency id="AWSSDK.SQS" version="3.5.1.10" />
+      <dependency id="AWSSDK.SQS" version="3.7.2.16" />
       <dependency id="Shuttle.Core.Uris" version="10.0.5" />
-      <dependency id="Shuttle.Esb" version="11.1.0" />
+      <dependency id="Shuttle.Esb" version="12.0.0" />
 		</dependencies>
 	</metadata>
 	<files>
