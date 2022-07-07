@@ -25,12 +25,5 @@ namespace Shuttle.Esb.AmazonSqs
 
             return new AmazonSqsQueue(uri, _configuration, _cancellationTokenSource.Get().Token);
         }
-
-        public bool CanCreate(Uri uri)
-        {
-            Guard.AgainstNull(uri, "uri");
-
-            return Scheme.Equals(uri.Scheme, StringComparison.InvariantCultureIgnoreCase);
-        }
     }
 }
