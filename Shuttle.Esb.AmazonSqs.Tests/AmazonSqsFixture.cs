@@ -1,33 +1,21 @@
-﻿using Amazon.SQS;
-using Moq;
-using Ninject;
-using Shuttle.Core.Container;
-using Shuttle.Core.Ninject;
-using Shuttle.Esb.Tests;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Shuttle.Esb.AmazonSqs.Tests
 {
     public static class AmazonSqsFixture
     {
-        public static ComponentContainer GetComponentContainer()
+        public static IServiceCollection GetServiceCollection()
         {
-            var container = new NinjectComponentContainer(new StandardKernel());
+            var services = new ServiceCollection();
 
-            container.RegisterInstance(AmazonSqsConfiguration());
-
-            return new ComponentContainer(container, () => container);
-        }
-
-        private static IAmazonSqsConfiguration AmazonSqsConfiguration()
-        {
-            var mock = new Mock<IAmazonSqsConfiguration>();
-
-            mock.Setup(m => m.GetConfiguration(It.IsAny<string>())).Returns(new AmazonSQSConfig
+            services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+            services.AddAmazonSqs(builder =>
             {
-                ServiceURL = "http://localhost:9324"
+                builder.AddEndpoint("local", "http://localhost:9324");
             });
 
-            return mock.Object;
+            return services;
         }
     }
 }

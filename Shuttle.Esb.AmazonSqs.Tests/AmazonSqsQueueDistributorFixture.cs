@@ -10,8 +10,8 @@ namespace Shuttle.Esb.AmazonSqs.Tests
         [TestCase(true)]
         public void Should_be_able_to_distribute_messages(bool isTransactionalEndpoint)
         {
-            TestDistributor(AmazonSqsFixture.GetComponentContainer(), 
-                AmazonSqsFixture.GetComponentContainer(), @"amazonsqs://local/{0}?waitTimeSeconds=0", isTransactionalEndpoint);
+            TestDistributor(AmazonSqsFixture.GetServiceCollection(), 
+                AmazonSqsFixture.GetServiceCollection(), @"amazonsqs://local/{0}?waitTimeSeconds=0", isTransactionalEndpoint);
         }
     }
 }

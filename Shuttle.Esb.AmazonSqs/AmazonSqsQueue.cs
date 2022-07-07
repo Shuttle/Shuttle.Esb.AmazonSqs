@@ -238,6 +238,7 @@ namespace Shuttle.Esb.AmazonSqs
         }
 
         public Uri Uri { get; }
+        public bool IsStream => false;
 
         private void GetQueueUrl()
         {
