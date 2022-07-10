@@ -1,6 +1,6 @@
 ﻿namespace Shuttle.Esb.AmazonSqs
 {
-    public class AmazonSqsSettings
+    public class AmazonSqsOptions
     {
         public const string SectionName = "Shuttle:ServiceBus:AmazonSqs:Endpoints";
 

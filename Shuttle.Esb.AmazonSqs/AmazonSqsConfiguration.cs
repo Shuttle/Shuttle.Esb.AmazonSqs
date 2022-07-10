@@ -8,12 +8,12 @@ namespace Shuttle.Esb.AmazonSqs
 {
     public class AmazonSqsConfiguration : IAmazonSqsConfiguration
     {
-        private readonly IOptionsMonitor<AmazonSqsSettings> _amazonSqsOptions;
+        private readonly IOptionsMonitor<AmazonSqsOptions> _amazonSqsOptions;
 
         private readonly Dictionary<string, AmazonSQSConfig>
             _configurations = new Dictionary<string, AmazonSQSConfig>();
 
-        public AmazonSqsConfiguration(IOptionsMonitor<AmazonSqsSettings> amazonSqsOptions)
+        public AmazonSqsConfiguration(IOptionsMonitor<AmazonSqsOptions> amazonSqsOptions)
         {
             Guard.AgainstNull(amazonSqsOptions, nameof(amazonSqsOptions));
 

@@ -1,12 +1,11 @@
 ﻿using System;
 using Microsoft.Extensions.Options;
-using Shuttle.Core.Contract;
 
 namespace Shuttle.Esb.AmazonSqs
 {
-    public class AmazonSqsSettingsValidator : IValidateOptions<AmazonSqsSettings>
+    public class AmazonSqsOptionsValidator : IValidateOptions<AmazonSqsOptions>
     {
-        public ValidateOptionsResult Validate(string name, AmazonSqsSettings options)
+        public ValidateOptionsResult Validate(string name, AmazonSqsOptions options)
         {
             if (string.IsNullOrWhiteSpace(name))
             {

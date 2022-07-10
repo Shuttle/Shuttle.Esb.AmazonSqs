@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -10,15 +9,15 @@ namespace Shuttle.Esb.AmazonSqs
     public static class ServiceCollectionExtensions
     {
         public static IServiceCollection AddAmazonSqs(this IServiceCollection services,
-            Action<AmazonSqsConfigurationBuilder> builder = null)
+            Action<AmazonSqsBuilder> builder = null)
         {
             Guard.AgainstNull(services, nameof(services));
 
-            var configurationBuilder = new AmazonSqsConfigurationBuilder(services);
+            var configurationBuilder = new AmazonSqsBuilder(services);
 
             builder?.Invoke(configurationBuilder);
 
-            services.AddSingleton<IValidateOptions<AmazonSqsSettings>, AmazonSqsSettingsValidator>();
+            services.AddSingleton<IValidateOptions<AmazonSqsOptions>, AmazonSqsOptionsValidator>();
 
             services.TryAddSingleton<IAmazonSqsConfiguration, AmazonSqsConfiguration>();
             services.TryAddSingleton<IQueueFactory, AmazonSqsQueueFactory>();

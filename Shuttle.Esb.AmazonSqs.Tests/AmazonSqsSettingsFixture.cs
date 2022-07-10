@@ -8,13 +8,13 @@ namespace Shuttle.Esb.AmazonSqs.Tests
     [TestFixture]
     public class AmazonSqsSettingsFixture
     {
-        protected AmazonSqsSettings GetSettings(string name)
+        protected AmazonSqsOptions GetSettings(string name)
         {
-            var result = new AmazonSqsSettings();
+            var result = new AmazonSqsOptions();
 
             new ConfigurationBuilder()
                 .AddJsonFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @".\appsettings.json")).Build()
-                .GetRequiredSection($"{AmazonSqsSettings.SectionName}:{name}").Bind(result);
+                .GetRequiredSection($"{AmazonSqsOptions.SectionName}:{name}").Bind(result);
 
             return result;
         }
