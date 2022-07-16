@@ -7,18 +7,18 @@ namespace Shuttle.Esb.AmazonSqs
 {
     public class AmazonSqsBuilder
     {
-        private readonly IServiceCollection _services;
+        public IServiceCollection Services { get; }
 
         public AmazonSqsBuilder(IServiceCollection services)
         {
             Guard.AgainstNull(services, nameof(services));
 
-            _services = services;
+            Services = services;
         }
 
         public AmazonSqsBuilder AddEndpoint(string name, AmazonSQSConfig configuration)
         {
-            _services.AddOptions<AmazonSqsOptions>(name).Configure<IAmazonSqsConfiguration>((options, amazonSqsConfiguration) =>
+            Services.AddOptions<AmazonSqsOptions>(name).Configure<IAmazonSqsConfiguration>((options, amazonSqsConfiguration) =>
             {
                 options.ServiceUrl = configuration.ServiceURL;
 
@@ -30,7 +30,7 @@ namespace Shuttle.Esb.AmazonSqs
 
         public AmazonSqsBuilder AddEndpoint(string name, string serviceUrl)
         {
-            _services.AddOptions<AmazonSqsOptions>(name).Configure(options =>
+            Services.AddOptions<AmazonSqsOptions>(name).Configure(options =>
             {
                 options.ServiceUrl = serviceUrl;
             });
@@ -40,7 +40,7 @@ namespace Shuttle.Esb.AmazonSqs
 
         public AmazonSqsBuilder AddEndpoint(string name)
         {
-            _services.AddOptions<AmazonSqsOptions>(name).Configure<IConfiguration, IAmazonSqsConfiguration>((option, configuration, amazonSqsConfiguration) =>
+            Services.AddOptions<AmazonSqsOptions>(name).Configure<IConfiguration, IAmazonSqsConfiguration>((option, configuration, amazonSqsConfiguration) =>
             {
                 var settings = configuration.GetSection($"{AmazonSqsOptions.SectionName}").Get<AmazonSqsOptions>();
 
