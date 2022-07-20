@@ -5,11 +5,13 @@ namespace Shuttle.Esb.AmazonSqs.Tests
 {
     public class AmazonSqsQueueInboxFixture : InboxFixture
     {
-        [TestCase(true)]
-        [TestCase(false)]
-        public void Should_be_able_handle_errors(bool isTransactionalEndpoint)
+        [TestCase(true, true)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(false, false)]
+        public void Should_be_able_handle_errors(bool hasErrorQueue, bool isTransactionalEndpoint)
         {
-            TestInboxError(AmazonSqsFixture.GetServiceCollection(), "amazonsqs://local/{0}?waitTimeSeconds=0", isTransactionalEndpoint);
+            TestInboxError(AmazonSqsFixture.GetServiceCollection(), "amazonsqs://local/{0}?waitTimeSeconds=0", hasErrorQueue, isTransactionalEndpoint);
         }
 
         [TestCase(250, false)]
