@@ -6,7 +6,7 @@ using NUnit.Framework;
 namespace Shuttle.Esb.AmazonSqs.Tests
 {
     [TestFixture]
-    public class AmazonSqsSettingsFixture
+    public class AmazonSqsOptionsFixture
     {
         protected AmazonSqsOptions GetSettings(string name)
         {
