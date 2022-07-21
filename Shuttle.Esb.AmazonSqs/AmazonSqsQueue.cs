@@ -35,8 +35,7 @@ namespace Shuttle.Esb.AmazonSqs
         private bool _queueUrlResolved;
         private readonly TimeSpan _operationTimeout = TimeSpan.FromSeconds(30);
 
-        public AmazonSqsQueue(Uri uri, IAmazonSqsConfiguration configuration,
-            CancellationToken cancellationToken = default)
+        public AmazonSqsQueue(Uri uri, IAmazonSqsConfiguration configuration, CancellationToken cancellationToken)
         {
             Guard.AgainstNull(uri, nameof(uri));
             Guard.AgainstNull(configuration, nameof(configuration));
