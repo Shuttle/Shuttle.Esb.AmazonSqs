@@ -33,11 +33,5 @@ namespace Shuttle.Esb.AmazonSqs.Tests
         {                                           
             TestInboxDeferred(AmazonSqsFixture.GetServiceCollection(), "amazonsqs://local/{0}?waitTimeSeconds=0");
         }
-
-        [Test]
-        public void Should_be_able_to_expire_a_message()
-        {
-            TestInboxExpiry(AmazonSqsFixture.GetServiceCollection(), "amazonsqs://local/{0}?waitTimeSeconds=0");
-        }
     }
 }

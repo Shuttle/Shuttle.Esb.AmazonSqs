@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using Shuttle.Core.Contract;
@@ -32,6 +33,7 @@ namespace Shuttle.Esb.AmazonSqs
         private readonly int _waitTimeSeconds;
         private string _queueUrl;
         private bool _queueUrlResolved;
+        private readonly TimeSpan _operationTimeout = TimeSpan.FromSeconds(30);
 
         public AmazonSqsQueue(Uri uri, IAmazonSqsConfiguration configuration,
             CancellationToken cancellationToken = default)
@@ -57,7 +59,14 @@ namespace Shuttle.Esb.AmazonSqs
         {
             lock (_lock)
             {
-                _client.CreateQueueAsync(new CreateQueueRequest { QueueName = _queueName }).Wait();
+                try
+                {
+                    _client.CreateQueueAsync(new CreateQueueRequest { QueueName = _queueName }, _cancellationToken)
+                        .Wait(_cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                }
 
                 GetQueueUrl();
             }
@@ -72,13 +81,21 @@ namespace Shuttle.Esb.AmazonSqs
 
             lock (_lock)
             {
+                // Cannot use _cancellationToken since stopping the service bus will cancel it.
                 foreach (var acknowledgementToken in _acknowledgementTokens.Values)
                 {
-                    _client.SendMessageAsync(
+                    try
+                    {
+                        _client.SendMessageAsync(
                             new SendMessageRequest
-                                { QueueUrl = _queueUrl, MessageBody = acknowledgementToken.MessageBody })
-                        .Wait();
-                    _client.DeleteMessageAsync(_queueUrl, acknowledgementToken.ReceiptHandle).Wait();
+                                { QueueUrl = _queueUrl, MessageBody = acknowledgementToken.MessageBody }
+                            ).Wait(_operationTimeout);
+                        _client.DeleteMessageAsync(_queueUrl, acknowledgementToken.ReceiptHandle)
+                            .Wait(_operationTimeout);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                    }
                 }
 
                 _acknowledgementTokens.Clear();
@@ -94,7 +111,13 @@ namespace Shuttle.Esb.AmazonSqs
                     return;
                 }
 
-                _client.DeleteQueueAsync(new DeleteQueueRequest { QueueUrl = _queueUrl }).Wait();
+                try
+                {
+                    _client.DeleteQueueAsync(new DeleteQueueRequest { QueueUrl = _queueUrl }, _cancellationToken).Wait(_cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                }
             }
         }
 
@@ -107,7 +130,13 @@ namespace Shuttle.Esb.AmazonSqs
 
             lock (_lock)
             {
-                _client.PurgeQueueAsync(new PurgeQueueRequest { QueueUrl = _queueUrl }).Wait();
+                try
+                {
+                    _client.PurgeQueueAsync(new PurgeQueueRequest { QueueUrl = _queueUrl }, _cancellationToken).Wait(_cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                }
             }
         }
 
@@ -120,14 +149,22 @@ namespace Shuttle.Esb.AmazonSqs
 
             lock (_lock)
             {
-                var response = _client.GetQueueAttributesAsync(new GetQueueAttributesRequest
+                try
                 {
-                    QueueUrl = _queueUrl,
-                    AttributeNames = _isEmptyAttributeNames
-                }).Result;
-                return response.ApproximateNumberOfMessages == 0 &&
-                       response.ApproximateNumberOfMessagesDelayed == 0 &&
-                       response.ApproximateNumberOfMessagesNotVisible == 0;
+                    var response = _client.GetQueueAttributesAsync(new GetQueueAttributesRequest
+                    {
+                        QueueUrl = _queueUrl,
+                        AttributeNames = _isEmptyAttributeNames
+                    }, _cancellationToken).Result;
+
+                    return response.ApproximateNumberOfMessages == 0 &&
+                           response.ApproximateNumberOfMessagesDelayed == 0 &&
+                           response.ApproximateNumberOfMessagesNotVisible == 0;
+                }
+                catch (OperationCanceledException)
+                {
+                    return true;
+                }
             }
         }
 
@@ -137,11 +174,20 @@ namespace Shuttle.Esb.AmazonSqs
             Guard.AgainstNull(stream, nameof(stream));
             GuardAgainstUnresolvedQueueUrl();
 
-            _client.SendMessageAsync(new SendMessageRequest
+            lock (_lock)
             {
-                QueueUrl = _queueUrl,
-                MessageBody = Convert.ToBase64String(stream.ToBytes())
-            }).Wait();
+                try
+                {
+                    _client.SendMessageAsync(new SendMessageRequest
+                    {
+                        QueueUrl = _queueUrl,
+                        MessageBody = Convert.ToBase64String(stream.ToBytes())
+                    }, _cancellationToken).Wait(_cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                }
+            }
         }
 
         public ReceivedMessage GetMessage()
@@ -176,7 +222,10 @@ namespace Shuttle.Esb.AmazonSqs
                         var acknowledgementToken =
                             new AcknowledgementToken(message.MessageId, message.Body, message.ReceiptHandle);
 
-                        _acknowledgementTokens.Add(acknowledgementToken.MessageId, acknowledgementToken);
+                        if (!_acknowledgementTokens.ContainsKey(acknowledgementToken.MessageId))
+                        {
+                            _acknowledgementTokens.Add(acknowledgementToken.MessageId, acknowledgementToken);
+                        }
 
                         _receivedMessages.Enqueue(new ReceivedMessage(
                             new MemoryStream(Convert.FromBase64String(message.Body)),
@@ -205,7 +254,13 @@ namespace Shuttle.Esb.AmazonSqs
                     _acknowledgementTokens.Remove(data.MessageId);
                 }
 
-                _client.DeleteMessageAsync(_queueUrl, data.ReceiptHandle).Wait();
+                try
+                {
+                    _client.DeleteMessageAsync(_queueUrl, data.ReceiptHandle, _cancellationToken).Wait(_cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                }
             }
         }
 
@@ -222,13 +277,19 @@ namespace Shuttle.Esb.AmazonSqs
 
             lock (_lock)
             {
-                _client.SendMessageAsync(new SendMessageRequest
+                try
                 {
-                    QueueUrl = _queueUrl,
-                    MessageBody = data.MessageBody
-                }).Wait();
+                    _client.SendMessageAsync(new SendMessageRequest
+                    {
+                        QueueUrl = _queueUrl,
+                        MessageBody = data.MessageBody
+                    }, _cancellationToken).Wait(_cancellationToken);
 
-                _client.DeleteMessageAsync(_queueUrl, data.ReceiptHandle).Wait();
+                    _client.DeleteMessageAsync(_queueUrl, data.ReceiptHandle, _cancellationToken).Wait(_cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                }
 
                 if (_acknowledgementTokens.ContainsKey(data.MessageId))
                 {
@@ -246,10 +307,16 @@ namespace Shuttle.Esb.AmazonSqs
             {
                 _queueUrlResolved = false;
 
-                _queueUrl = _client.GetQueueUrlAsync(new GetQueueUrlRequest
+                try
                 {
-                    QueueName = _queueName
-                }).Result.QueueUrl;
+                    _queueUrl = _client.GetQueueUrlAsync(new GetQueueUrlRequest
+                    {
+                        QueueName = _queueName
+                    }, _cancellationToken).Result.QueueUrl;
+                }
+                catch (AggregateException ex) when (ex.InnerException is TaskCanceledException)
+                {
+                }
 
                 _queueUrlResolved = !string.IsNullOrWhiteSpace(_queueUrl);
             }
