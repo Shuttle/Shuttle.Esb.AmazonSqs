@@ -9,7 +9,7 @@ namespace Shuttle.Esb.AmazonSqs.Tests
         [TestCase(false)]
         public void Should_be_able_handle_errors(bool isTransactionalEndpoint)
         {
-            TestOutboxSending(AmazonSqsFixture.GetServiceCollection(), "amazonsqs://local/{0}?waitTimeSeconds=0", isTransactionalEndpoint);
+            TestOutboxSending(AmazonSqsFixture.GetServiceCollection(), "amazonsqs://local/{0}?waitTimeSeconds=0", 3, isTransactionalEndpoint);
         }
     }
 }
