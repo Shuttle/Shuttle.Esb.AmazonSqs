@@ -171,6 +171,7 @@ namespace Shuttle.Esb.AmazonSqs
         {
             Guard.AgainstNull(message, nameof(message));
             Guard.AgainstNull(stream, nameof(stream));
+           
             GuardAgainstUnresolvedQueueUrl();
 
             lock (_lock)
@@ -239,6 +240,7 @@ namespace Shuttle.Esb.AmazonSqs
         public void Acknowledge(object acknowledgementToken)
         {
             Guard.AgainstNull(acknowledgementToken, nameof(acknowledgementToken));
+            
             GuardAgainstUnresolvedQueueUrl();
 
             lock (_lock)
@@ -265,9 +267,9 @@ namespace Shuttle.Esb.AmazonSqs
 
         public void Release(object acknowledgementToken)
         {
-            GuardAgainstUnresolvedQueueUrl();
-
             Guard.AgainstNull(acknowledgementToken, nameof(acknowledgementToken));
+
+            GuardAgainstUnresolvedQueueUrl();
 
             if (!(acknowledgementToken is AcknowledgementToken data))
             {
