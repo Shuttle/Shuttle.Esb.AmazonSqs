@@ -22,6 +22,5 @@ namespace Shuttle.Esb.AmazonSqs
 
             Configure.Invoke(sender, args);
         }
-
     }
 }
