@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Amazon.SQS;
 using Amazon.SQS.Model;
+using Microsoft.Extensions.Options;
 using Shuttle.Core.Contract;
 using Shuttle.Core.Streams;
 
@@ -12,6 +13,8 @@ namespace Shuttle.Esb.AmazonSqs
 {
     public class AmazonSqsQueue : IQueue, ICreateQueue, IDropQueue, IDisposable, IPurgeQueue
     {
+        public static readonly string Scheme = "amazonsqs";
+
         private readonly Dictionary<string, AcknowledgementToken> _acknowledgementTokens =
             new Dictionary<string, AcknowledgementToken>();
 
@@ -27,29 +30,36 @@ namespace Shuttle.Esb.AmazonSqs
         };
 
         private readonly object _lock = new object();
-        private readonly int _maxMessages;
-        private readonly string _queueName;
         private readonly Queue<ReceivedMessage> _receivedMessages = new Queue<ReceivedMessage>();
-        private readonly int _waitTimeSeconds;
         private string _queueUrl;
         private bool _queueUrlResolved;
         private readonly TimeSpan _operationTimeout = TimeSpan.FromSeconds(30);
+        private readonly AmazonSqsOptions _amazonSqsOptions;
 
-        public AmazonSqsQueue(Uri uri, IAmazonSqsConfiguration configuration, CancellationToken cancellationToken)
+        public AmazonSqsQueue(QueueUri uri, AmazonSqsOptions amazonSqsOptions, CancellationToken cancellationToken)
         {
             Guard.AgainstNull(uri, nameof(uri));
-            Guard.AgainstNull(configuration, nameof(configuration));
+            Guard.AgainstNull(amazonSqsOptions, nameof(amazonSqsOptions));
 
             _cancellationToken = cancellationToken;
 
             Uri = uri;
 
-            var parser = new AmazonSqsQueueUriParser(uri);
+            _amazonSqsOptions = amazonSqsOptions;
 
-            _queueName = parser.QueueName;
-            _client = new AmazonSQSClient(configuration.GetConfiguration(uri.Host));
-            _maxMessages = parser.MaxMessages;
-            _waitTimeSeconds = parser.WaitTimeSeconds;
+            if (_amazonSqsOptions == null)
+            {
+                throw new InvalidOperationException(string.Format(Esb.Resources.QueueConfigurationNameException, Uri.ConfigurationName));
+            }
+
+            var amazonSqsConfig = new AmazonSQSConfig
+            {
+                ServiceURL = amazonSqsOptions.ServiceUrl
+            };
+
+            _amazonSqsOptions.OnConfigureConsumer(this, new ConfigureEventArgs(amazonSqsConfig));
+
+            _client = new AmazonSQSClient(amazonSqsConfig);
 
             GetQueueUrl();
         }
@@ -60,7 +70,7 @@ namespace Shuttle.Esb.AmazonSqs
             {
                 try
                 {
-                    _client.CreateQueueAsync(new CreateQueueRequest { QueueName = _queueName }, _cancellationToken)
+                    _client.CreateQueueAsync(new CreateQueueRequest { QueueName = Uri.Queue }, _cancellationToken)
                         .Wait(_cancellationToken);
                 }
                 catch (OperationCanceledException)
@@ -208,8 +218,8 @@ namespace Shuttle.Esb.AmazonSqs
                         messages = _client.ReceiveMessageAsync(new ReceiveMessageRequest
                         {
                             QueueUrl = _queueUrl,
-                            MaxNumberOfMessages = _maxMessages,
-                            WaitTimeSeconds = _waitTimeSeconds
+                            MaxNumberOfMessages = _amazonSqsOptions.MaxMessages,
+                            WaitTimeSeconds = (int)_amazonSqsOptions.WaitTime.TotalSeconds
                         }, _cancellationToken).Result;
                     }
                     catch
@@ -299,7 +309,7 @@ namespace Shuttle.Esb.AmazonSqs
             }
         }
 
-        public Uri Uri { get; }
+        public QueueUri Uri { get; }
         public bool IsStream => false;
 
         private void GetQueueUrl()
@@ -312,7 +322,7 @@ namespace Shuttle.Esb.AmazonSqs
                 {
                     _queueUrl = _client.GetQueueUrlAsync(new GetQueueUrlRequest
                     {
-                        QueueName = _queueName
+                        QueueName = Uri.Queue
                     }, _cancellationToken).Result.QueueUrl;
                 }
                 catch (AggregateException ex) when (ex.InnerException is TaskCanceledException)
@@ -335,7 +345,7 @@ namespace Shuttle.Esb.AmazonSqs
         {
             if (!_queueUrlResolved)
             {
-                throw new ApplicationException(string.Format(Resources.QueueUrlNotResolvedException, _queueName));
+                throw new ApplicationException(string.Format(Resources.QueueUrlNotResolvedException, Uri.Queue));
             }
         }
 

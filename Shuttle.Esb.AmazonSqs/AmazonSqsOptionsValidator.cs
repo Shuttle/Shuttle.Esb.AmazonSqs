@@ -9,13 +9,13 @@ namespace Shuttle.Esb.AmazonSqs
         {
             if (string.IsNullOrWhiteSpace(name))
             {
-                return ValidateOptionsResult.Fail(Resources.AmazonSqsSettingsNameException);
+                return ValidateOptionsResult.Fail(Esb.Resources.QueueConfigurationNameException);
             }
 
             if (string.IsNullOrWhiteSpace(options.ServiceUrl) ||
                 !Uri.IsWellFormedUriString(options.ServiceUrl, UriKind.RelativeOrAbsolute))
             {
-                return ValidateOptionsResult.Fail(string.Format(Resources.AmazonSqsSettingsServiceUrlException, name, options.ServiceUrl));
+                return ValidateOptionsResult.Fail(string.Format(Resources.AmazonSqsOptionsServiceUrlException, name, options.ServiceUrl));
             }
 
             return ValidateOptionsResult.Success;

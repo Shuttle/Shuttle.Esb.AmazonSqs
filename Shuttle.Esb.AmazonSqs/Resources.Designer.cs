@@ -61,38 +61,11 @@ namespace Shuttle.Esb.AmazonSqs {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to An `AmazonSqsSettings` instance requires an endpoint name..
-        /// </summary>
-        public static string AmazonSqsSettingsNameException {
-            get {
-                return ResourceManager.GetString("AmazonSqsSettingsNameException", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to The `AmazonSqsSettings` instance with endpoint name &apos;{0}&apos; has in invalid service url of &apos;{1}&apos;..
         /// </summary>
-        public static string AmazonSqsSettingsServiceUrlException {
+        public static string AmazonSqsOptionsServiceUrlException {
             get {
-                return ResourceManager.GetString("AmazonSqsSettingsServiceUrlException", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to This is already a configuration registered for endpoint with name &apos;{0}&apos;..
-        /// </summary>
-        public static string DuplicateEndpointConfigurationException {
-            get {
-                return ResourceManager.GetString("DuplicateEndpointConfigurationException", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to There is no configuration registered for endpoint with name &apos;{0}&apos;..
-        /// </summary>
-        public static string EndpointConfigurationMissingException {
-            get {
-                return ResourceManager.GetString("EndpointConfigurationMissingException", resourceCulture);
+                return ResourceManager.GetString("AmazonSqsOptionsServiceUrlException", resourceCulture);
             }
         }
         

@@ -1,4 +1,5 @@
-﻿using Amazon.SQS;
+﻿using System.Collections.Generic;
+using Amazon.SQS;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shuttle.Core.Contract;
@@ -7,6 +8,7 @@ namespace Shuttle.Esb.AmazonSqs
 {
     public class AmazonSqsBuilder
     {
+        internal readonly Dictionary<string, AmazonSqsOptions> AmazonSqsOptions = new Dictionary<string, AmazonSqsOptions>();
         public IServiceCollection Services { get; }
 
         public AmazonSqsBuilder(IServiceCollection services)
@@ -16,43 +18,14 @@ namespace Shuttle.Esb.AmazonSqs
             Services = services;
         }
 
-        public AmazonSqsBuilder AddEndpoint(string name, AmazonSQSConfig configuration)
+        public AmazonSqsBuilder AddOptions(string name, AmazonSqsOptions amazonSqsOptions)
         {
-            Services.AddOptions<AmazonSqsOptions>(name).Configure<IAmazonSqsConfiguration>((options, amazonSqsConfiguration) =>
-            {
-                options.ServiceUrl = configuration.ServiceURL;
+            Guard.AgainstNullOrEmptyString(name, nameof(name));
+            Guard.AgainstNull(amazonSqsOptions, nameof(amazonSqsOptions));
 
-                amazonSqsConfiguration.AddConfiguration(name, configuration);
-            });
+            AmazonSqsOptions.Remove(name);
 
-            return this;
-        }
-
-        public AmazonSqsBuilder AddEndpoint(string name, string serviceUrl)
-        {
-            Services.AddOptions<AmazonSqsOptions>(name).Configure(options =>
-            {
-                options.ServiceUrl = serviceUrl;
-            });
-
-            return this;
-        }
-
-        public AmazonSqsBuilder AddEndpoint(string name)
-        {
-            Services.AddOptions<AmazonSqsOptions>(name).Configure<IConfiguration, IAmazonSqsConfiguration>((option, configuration, amazonSqsConfiguration) =>
-            {
-                var settings = configuration.GetSection($"{AmazonSqsOptions.SectionName}").Get<AmazonSqsOptions>();
-
-                Guard.AgainstNull(settings, nameof(settings));
-
-                option.ServiceUrl = settings.ServiceUrl;
-
-                amazonSqsConfiguration.AddConfiguration(name, new AmazonSQSConfig
-                {
-                    ServiceURL = settings.ServiceUrl
-                });
-            });
+            AmazonSqsOptions.Add(name, amazonSqsOptions);
 
             return this;
         }

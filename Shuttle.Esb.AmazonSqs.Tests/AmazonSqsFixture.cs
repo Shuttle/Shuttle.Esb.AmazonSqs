@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Shuttle.Esb.AmazonSqs.Tests
@@ -12,7 +13,17 @@ namespace Shuttle.Esb.AmazonSqs.Tests
             services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
             services.AddAmazonSqs(builder =>
             {
-                builder.AddEndpoint("local", "http://localhost:9324");
+                var amazonSqsOptions = new AmazonSqsOptions
+                {
+                    ServiceUrl = "http://localhost:9324"
+                };
+
+                amazonSqsOptions.Configure += (sender, args) =>
+                {
+                    Console.WriteLine($"[event] : Configure / Uri = '{((IQueue)sender).Uri}'");
+                };
+
+                builder.AddOptions("local", amazonSqsOptions);
             });
 
             return services;
