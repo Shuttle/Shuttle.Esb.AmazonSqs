@@ -15,7 +15,7 @@ namespace Shuttle.Esb.AmazonSqs
             if (string.IsNullOrWhiteSpace(options.ServiceUrl) ||
                 !Uri.IsWellFormedUriString(options.ServiceUrl, UriKind.RelativeOrAbsolute))
             {
-                return ValidateOptionsResult.Fail(string.Format(Resources.AmazonSqsOptionsServiceUrlException, name, options.ServiceUrl));
+                return ValidateOptionsResult.Fail(string.Format(Esb.Resources.QueueConfigurationItemException, name, nameof(options.ServiceUrl)));
             }
 
             return ValidateOptionsResult.Success;

@@ -61,15 +61,6 @@ namespace Shuttle.Esb.AmazonSqs {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The `AmazonSqsSettings` instance with endpoint name &apos;{0}&apos; has in invalid service url of &apos;{1}&apos;..
-        /// </summary>
-        public static string AmazonSqsOptionsServiceUrlException {
-            get {
-                return ResourceManager.GetString("AmazonSqsOptionsServiceUrlException", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to The queue url for queue with name &apos;{0}&apos; has not yet been resolved.  This happens when the queue does not exist..
         /// </summary>
         public static string QueueUrlNotResolvedException {

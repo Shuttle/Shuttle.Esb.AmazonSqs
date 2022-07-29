@@ -117,10 +117,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="AmazonSqsOptionsServiceUrlException" xml:space="preserve">
-    <value>The `AmazonSqsSettings` instance with endpoint name '{0}' has in invalid service url of '{1}'.</value>
-    <comment>0 = endpoint name, 1 = service url</comment>
-  </data>
   <data name="QueueUrlNotResolvedException" xml:space="preserve">
     <value>The queue url for queue with name '{0}' has not yet been resolved.  This happens when the queue does not exist.</value>
     <comment>0 = queue name</comment>
