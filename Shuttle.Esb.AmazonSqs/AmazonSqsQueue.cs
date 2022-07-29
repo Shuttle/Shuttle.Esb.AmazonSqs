@@ -47,11 +47,6 @@ namespace Shuttle.Esb.AmazonSqs
 
             _amazonSqsOptions = amazonSqsOptions;
 
-            if (_amazonSqsOptions == null)
-            {
-                throw new InvalidOperationException(string.Format(Esb.Resources.QueueConfigurationNameException, Uri.ConfigurationName));
-            }
-
             var amazonSqsConfig = new AmazonSQSConfig
             {
                 ServiceURL = amazonSqsOptions.ServiceUrl
@@ -70,7 +65,7 @@ namespace Shuttle.Esb.AmazonSqs
             {
                 try
                 {
-                    _client.CreateQueueAsync(new CreateQueueRequest { QueueName = Uri.Queue }, _cancellationToken)
+                    _client.CreateQueueAsync(new CreateQueueRequest { QueueName = Uri.QueueName }, _cancellationToken)
                         .Wait(_cancellationToken);
                 }
                 catch (OperationCanceledException)
@@ -322,7 +317,7 @@ namespace Shuttle.Esb.AmazonSqs
                 {
                     _queueUrl = _client.GetQueueUrlAsync(new GetQueueUrlRequest
                     {
-                        QueueName = Uri.Queue
+                        QueueName = Uri.QueueName
                     }, _cancellationToken).Result.QueueUrl;
                 }
                 catch (AggregateException ex) when (ex.InnerException is TaskCanceledException)
@@ -345,7 +340,7 @@ namespace Shuttle.Esb.AmazonSqs
         {
             if (!_queueUrlResolved)
             {
-                throw new ApplicationException(string.Format(Resources.QueueUrlNotResolvedException, Uri.Queue));
+                throw new ApplicationException(string.Format(Resources.QueueUrlNotResolvedException, Uri.QueueName));
             }
         }
 

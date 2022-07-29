@@ -54,6 +54,7 @@ namespace Shuttle.Esb.AmazonSqs
                     };
                 });
             }
+
             services.TryAddSingleton<IQueueFactory, AmazonSqsQueueFactory>();
 
             return services;
