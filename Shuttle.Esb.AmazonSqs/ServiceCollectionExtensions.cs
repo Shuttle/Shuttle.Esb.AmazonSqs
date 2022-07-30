@@ -9,8 +9,7 @@ namespace Shuttle.Esb.AmazonSqs
 {
     public static class ServiceCollectionExtensions
     {
-        public static IServiceCollection AddAmazonSqs(this IServiceCollection services,
-            Action<AmazonSqsBuilder> builder = null)
+        public static IServiceCollection AddAmazonSqs(this IServiceCollection services, Action<AmazonSqsBuilder> builder = null)
         {
             Guard.AgainstNull(services, nameof(services));
 
