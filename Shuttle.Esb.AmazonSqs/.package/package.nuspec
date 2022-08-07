@@ -16,7 +16,6 @@
 		<tags>aws sqs amazonsqs amazonmq awssqs awsmq</tags>
 		<dependencies>
       <dependency id="AWSSDK.SQS" version="3.7.2.42" />
-      <dependency id="Shuttle.Core.Uris" version="10.0.6" />
       <dependency id="Shuttle.Esb" version="13.0.0" />
 		</dependencies>
 	</metadata>
