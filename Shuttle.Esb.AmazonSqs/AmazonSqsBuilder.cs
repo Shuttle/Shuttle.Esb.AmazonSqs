@@ -1,6 +1,4 @@
 ﻿using System.Collections.Generic;
-using Amazon.SQS;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shuttle.Core.Contract;
 

@@ -8,8 +8,8 @@ namespace Shuttle.Esb.AmazonSqs
         public const string SectionName = "Shuttle:ServiceBus:AmazonSqs";
 
         public string ServiceUrl { get; set; }
-        public int MaxMessages { get; set; }
-        public TimeSpan WaitTime { get; set; }
+        public int MaxMessages { get; set; } = 1;
+        public TimeSpan WaitTime { get; set; } = TimeSpan.FromSeconds(20);
 
         public event EventHandler<ConfigureEventArgs> Configure = delegate
         {
