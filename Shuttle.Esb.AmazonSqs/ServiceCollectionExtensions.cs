@@ -31,9 +31,9 @@ namespace Shuttle.Esb.AmazonSqs
                         options.MaxMessages = 1;
                     }
 
-                    if (options.MaxMessages > 32)
+                    if (options.MaxMessages > 10)
                     {
-                        options.MaxMessages = 32;
+                        options.MaxMessages = 10;
                     }
 
                     if (options.WaitTime < TimeSpan.Zero)

@@ -15,7 +15,9 @@ namespace Shuttle.Esb.AmazonSqs.Tests
             {
                 var amazonSqsOptions = new AmazonSqsOptions
                 {
-                    ServiceUrl = "http://localhost:9324"
+                    ServiceUrl = "http://localhost:9324",
+                    WaitTime = TimeSpan.FromSeconds(1),
+                    MaxMessages = 10
                 };
 
                 amazonSqsOptions.Configure += (sender, args) =>
