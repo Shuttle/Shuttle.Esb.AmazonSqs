@@ -31,6 +31,8 @@ services.AddAmazonSqs(builder =>
 });
 ```
 
+The `Configure` event `args` arugment exposes the `AmazonSQSConfig` directly for any specific options that need to be set.
+
 The default JSON settings structure is as follows:
 
 ```json
