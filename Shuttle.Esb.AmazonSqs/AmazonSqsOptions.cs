@@ -5,7 +5,7 @@ namespace Shuttle.Esb.AmazonSqs
 {
     public class AmazonSqsOptions
     {
-        public const string SectionName = "Shuttle:ServiceBus:AmazonSqs";
+        public const string SectionName = "Shuttle:AmazonSqs";
 
         public string ServiceUrl { get; set; }
         public int MaxMessages { get; set; } = 10;

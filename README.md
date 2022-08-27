@@ -38,16 +38,14 @@ The default JSON settings structure is as follows:
 ```json
 {
   "Shuttle": {
-    "ServiceBus": {
-      "AmazonSqs": {
-        "local": {
-          "ServiceUrl": "http://localhost:9324",
-          "MaxMessages": 5,
-          "WaitTime": "00:00:20"
-        },
-        "proper": {
-          "ServiceUrl": "https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue"
-        }
+    "AmazonSqs": {
+      "local": {
+        "ServiceUrl": "http://localhost:9324",
+        "MaxMessages": 5,
+        "WaitTime": "00:00:20"
+      },
+      "proper": {
+        "ServiceUrl": "https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue"
       }
     }
   }
