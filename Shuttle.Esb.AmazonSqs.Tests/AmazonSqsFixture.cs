@@ -1,33 +1,34 @@
-﻿using Amazon.SQS;
-using Moq;
-using Ninject;
-using Shuttle.Core.Container;
-using Shuttle.Core.Ninject;
-using Shuttle.Esb.Tests;
+﻿using System;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Shuttle.Esb.AmazonSqs.Tests
 {
     public static class AmazonSqsFixture
     {
-        public static ComponentContainer GetComponentContainer()
+        public static IServiceCollection GetServiceCollection()
         {
-            var container = new NinjectComponentContainer(new StandardKernel());
+            var services = new ServiceCollection();
 
-            container.RegisterInstance(AmazonSqsConfiguration());
-
-            return new ComponentContainer(container, () => container);
-        }
-
-        private static IAmazonSqsConfiguration AmazonSqsConfiguration()
-        {
-            var mock = new Mock<IAmazonSqsConfiguration>();
-
-            mock.Setup(m => m.GetConfiguration(It.IsAny<string>())).Returns(new AmazonSQSConfig
+            services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+            services.AddAmazonSqs(builder =>
             {
-                ServiceURL = "http://localhost:9324"
+                var amazonSqsOptions = new AmazonSqsOptions
+                {
+                    ServiceUrl = "http://localhost:9324",
+                    WaitTime = TimeSpan.FromSeconds(1),
+                    MaxMessages = 10
+                };
+
+                amazonSqsOptions.Configure += (sender, args) =>
+                {
+                    Console.WriteLine($"[event] : Configure / Uri = '{((IQueue)sender).Uri}'");
+                };
+
+                builder.AddOptions("local", amazonSqsOptions);
             });
 
-            return mock.Object;
+            return services;
         }
     }
 }

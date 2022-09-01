@@ -1,4 +1,5 @@
 ﻿using System;
+using Microsoft.Extensions.Options;
 using Shuttle.Core.Contract;
 using Shuttle.Core.Threading;
 
@@ -6,16 +7,16 @@ namespace Shuttle.Esb.AmazonSqs
 {
     public class AmazonSqsQueueFactory : IQueueFactory
     {
-        private readonly IAmazonSqsConfiguration _configuration;
+        private readonly IOptionsMonitor<AmazonSqsOptions> _amazonSqsOptions;
         private readonly ICancellationTokenSource _cancellationTokenSource;
-        public string Scheme => AmazonSqsQueueUriParser.Scheme;
+        public string Scheme => "amazonsqs";
 
-        public AmazonSqsQueueFactory(IAmazonSqsConfiguration configuration, ICancellationTokenSource cancellationTokenSource)
+        public AmazonSqsQueueFactory(IOptionsMonitor<AmazonSqsOptions> amazonSqsOptions, ICancellationTokenSource cancellationTokenSource)
         {
-            Guard.AgainstNull(configuration, nameof(configuration));
+            Guard.AgainstNull(amazonSqsOptions, nameof(amazonSqsOptions));
             Guard.AgainstNull(cancellationTokenSource, nameof(cancellationTokenSource));
 
-            _configuration = configuration;
+            _amazonSqsOptions = amazonSqsOptions;
             _cancellationTokenSource = cancellationTokenSource;
         }
 
@@ -23,14 +24,15 @@ namespace Shuttle.Esb.AmazonSqs
         {
             Guard.AgainstNull(uri, "uri");
 
-            return new AmazonSqsQueue(uri, _configuration, _cancellationTokenSource.Get().Token);
-        }
+            var queueUri = new QueueUri(uri).SchemeInvariant(Scheme);
+            var amazonSqsOptions = _amazonSqsOptions.Get(queueUri.ConfigurationName);
 
-        public bool CanCreate(Uri uri)
-        {
-            Guard.AgainstNull(uri, "uri");
+            if (amazonSqsOptions == null)
+            {
+                throw new InvalidOperationException(string.Format(Esb.Resources.QueueConfigurationNameException, queueUri.ConfigurationName));
+            }
 
-            return Scheme.Equals(uri.Scheme, StringComparison.InvariantCultureIgnoreCase);
+            return new AmazonSqsQueue(queueUri, amazonSqsOptions, _cancellationTokenSource.Get().Token);
         }
     }
 }
