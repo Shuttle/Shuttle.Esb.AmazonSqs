@@ -6,8 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.SQS" Version="3.7.2.100" />
-    <PackageReference Include="Shuttle.Esb" Version="13.1.0" />
+    <PackageReference Include="AWSSDK.SQS" Version="3.7.2.102" />
+    <PackageReference Include="Shuttle.Esb" Version="13.2.0" />
   </ItemGroup>
 
   <ItemGroup>

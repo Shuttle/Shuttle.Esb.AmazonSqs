@@ -3,7 +3,7 @@
 <package>
 	<metadata>
 		<id>Shuttle.Esb.AmazonSqs</id>
-		<version>13.1.0</version>
+		<version>13.2.0</version>
 		<authors>Eben Roux</authors>
 		<owners>Eben Roux</owners>
 		<license type="expression">BSD-3-Clause</license>
@@ -15,8 +15,8 @@
 		<copyright>Copyright (c) 2022, Eben Roux</copyright>
 		<tags>aws sqs amazonsqs amazonmq awssqs awsmq</tags>
 		<dependencies>
-      <dependency id="AWSSDK.SQS" version="3.7.2.100" />
-      <dependency id="Shuttle.Esb" version="13.1.0" />
+      <dependency id="AWSSDK.SQS" version="3.7.2.102" />
+      <dependency id="Shuttle.Esb" version="13.2.0" />
 		</dependencies>
 	</metadata>
 	<files>
