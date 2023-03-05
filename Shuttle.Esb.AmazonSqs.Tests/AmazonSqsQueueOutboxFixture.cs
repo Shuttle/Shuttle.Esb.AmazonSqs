@@ -1,5 +1,6 @@
 ﻿using NUnit.Framework;
 using Shuttle.Esb.Tests;
+using System.Threading.Tasks;
 
 namespace Shuttle.Esb.AmazonSqs.Tests
 {
@@ -7,9 +8,9 @@ namespace Shuttle.Esb.AmazonSqs.Tests
     {
         [TestCase(true)]
         [TestCase(false)]
-        public void Should_be_able_handle_errors(bool isTransactionalEndpoint)
+        public async Task Should_be_able_handle_errors(bool isTransactionalEndpoint)
         {
-            TestOutboxSending(AmazonSqsFixture.GetServiceCollection(), "amazonsqs://local/{0}", 3, isTransactionalEndpoint);
+            await TestOutboxSending(AmazonSqsFixture.GetServiceCollection(), "amazonsqs://local/{0}", 3, isTransactionalEndpoint);
         }
     }
 }

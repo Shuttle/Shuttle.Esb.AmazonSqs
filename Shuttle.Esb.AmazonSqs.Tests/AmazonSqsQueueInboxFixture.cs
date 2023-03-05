@@ -1,5 +1,6 @@
 ﻿using NUnit.Framework;
 using Shuttle.Esb.Tests;
+using System.Threading.Tasks;
 
 namespace Shuttle.Esb.AmazonSqs.Tests
 {
@@ -9,29 +10,29 @@ namespace Shuttle.Esb.AmazonSqs.Tests
         [TestCase(true, false)]
         [TestCase(false, true)]
         [TestCase(false, false)]
-        public void Should_be_able_handle_errors(bool hasErrorQueue, bool isTransactionalEndpoint)
+        public async Task Should_be_able_handle_errors(bool hasErrorQueue, bool isTransactionalEndpoint)
         {
-            TestInboxError(AmazonSqsFixture.GetServiceCollection(), "amazonsqs://local/{0}", hasErrorQueue, isTransactionalEndpoint);
+            await TestInboxError(AmazonSqsFixture.GetServiceCollection(), "amazonsqs://local/{0}", hasErrorQueue, isTransactionalEndpoint);
         }
 
         [TestCase(250, false)]
         [TestCase(250, true)]
-        public void Should_be_able_to_process_messages_concurrently(int msToComplete, bool isTransactionalEndpoint)
+        public async Task Should_be_able_to_process_messages_concurrently(int msToComplete, bool isTransactionalEndpoint)
         {
-            TestInboxConcurrency(AmazonSqsFixture.GetServiceCollection(), "amazonsqs://local/{0}", msToComplete, isTransactionalEndpoint);
+            await TestInboxConcurrency(AmazonSqsFixture.GetServiceCollection(), "amazonsqs://local/{0}", msToComplete, isTransactionalEndpoint);
         }
 
         [TestCase(100, true)]
         [TestCase(100, false)]
-        public void Should_be_able_to_process_queue_timeously(int count, bool isTransactionalEndpoint)
+        public async Task Should_be_able_to_process_queue_timeously(int count, bool isTransactionalEndpoint)
         {
-            TestInboxThroughput(AmazonSqsFixture.GetServiceCollection(), "amazonsqs://local/{0}", 1000, count, 1, isTransactionalEndpoint);
+            await TestInboxThroughput(AmazonSqsFixture.GetServiceCollection(), "amazonsqs://local/{0}", 1000, count, 1, isTransactionalEndpoint);
         }
 
         [Test]
-        public void Should_be_able_to_handle_a_deferred_message()
+        public async Task Should_be_able_to_handle_a_deferred_message()
         {                                           
-            TestInboxDeferred(AmazonSqsFixture.GetServiceCollection(), "amazonsqs://local/{0}");
+            await TestInboxDeferred(AmazonSqsFixture.GetServiceCollection(), "amazonsqs://local/{0}");
         }
     }
 }

@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Amazon.SQS;
 using Amazon.SQS.Model;
-using Microsoft.Extensions.Options;
 using Shuttle.Core.Contract;
 using Shuttle.Core.Streams;
 
@@ -13,10 +12,10 @@ namespace Shuttle.Esb.AmazonSqs
 {
     public class AmazonSqsQueue : IQueue, ICreateQueue, IDropQueue, IDisposable, IPurgeQueue
     {
-        public static readonly string Scheme = "amazonsqs";
-
         private readonly Dictionary<string, AcknowledgementToken> _acknowledgementTokens =
             new Dictionary<string, AcknowledgementToken>();
+
+        private readonly AmazonSqsOptions _amazonSqsOptions;
 
         private readonly CancellationToken _cancellationToken;
 
@@ -29,23 +28,19 @@ namespace Shuttle.Esb.AmazonSqs
             "ApproximateNumberOfMessagesNotVisible"
         };
 
-        private readonly object _lock = new object();
+        private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
+        private readonly TimeSpan _operationTimeout = TimeSpan.FromSeconds(30);
+
         private readonly Queue<ReceivedMessage> _receivedMessages = new Queue<ReceivedMessage>();
         private string _queueUrl;
         private bool _queueUrlResolved;
-        private readonly TimeSpan _operationTimeout = TimeSpan.FromSeconds(30);
-        private readonly AmazonSqsOptions _amazonSqsOptions;
 
         public AmazonSqsQueue(QueueUri uri, AmazonSqsOptions amazonSqsOptions, CancellationToken cancellationToken)
         {
-            Guard.AgainstNull(uri, nameof(uri));
-            Guard.AgainstNull(amazonSqsOptions, nameof(amazonSqsOptions));
+            Uri = Guard.AgainstNull(uri, nameof(uri));
+            _amazonSqsOptions = Guard.AgainstNull(amazonSqsOptions, nameof(amazonSqsOptions));
 
             _cancellationToken = cancellationToken;
-
-            Uri = uri;
-
-            _amazonSqsOptions = amazonSqsOptions;
 
             var amazonSqsConfig = new AmazonSQSConfig
             {
@@ -56,23 +51,28 @@ namespace Shuttle.Esb.AmazonSqs
 
             _client = new AmazonSQSClient(amazonSqsConfig);
 
-            GetQueueUrl();
+            GetQueueUrl().GetAwaiter().GetResult();
         }
 
-        public void Create()
+        public async Task Create()
         {
-            lock (_lock)
+            await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+
+            try
             {
                 try
                 {
-                    _client.CreateQueueAsync(new CreateQueueRequest { QueueName = Uri.QueueName }, _cancellationToken)
-                        .Wait(_cancellationToken);
+                    await _client.CreateQueueAsync(new CreateQueueRequest { QueueName = Uri.QueueName }, _cancellationToken).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
                 }
 
-                GetQueueUrl();
+                await GetQueueUrl();
+            }
+            finally
+            {
+                _lock.Release();
             }
         }
 
@@ -83,7 +83,9 @@ namespace Shuttle.Esb.AmazonSqs
                 return;
             }
 
-            lock (_lock)
+            _lock.Wait(CancellationToken.None);
+
+            try
             {
                 // Cannot use _cancellationToken since stopping the service bus will cancel it.
                 foreach (var acknowledgementToken in _acknowledgementTokens.Values)
@@ -93,7 +95,7 @@ namespace Shuttle.Esb.AmazonSqs
                         _client.SendMessageAsync(
                             new SendMessageRequest
                                 { QueueUrl = _queueUrl, MessageBody = acknowledgementToken.MessageBody }
-                            ).Wait(_operationTimeout);
+                        ).Wait(_operationTimeout);
                         _client.DeleteMessageAsync(_queueUrl, acknowledgementToken.ReceiptHandle)
                             .Wait(_operationTimeout);
                     }
@@ -104,11 +106,17 @@ namespace Shuttle.Esb.AmazonSqs
 
                 _acknowledgementTokens.Clear();
             }
+            finally
+            {
+                _lock.Release();
+            }
         }
 
-        public void Drop()
+        public async Task Drop()
         {
-            lock (_lock)
+            await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+
+            try
             {
                 if (!_queueUrlResolved)
                 {
@@ -117,92 +125,110 @@ namespace Shuttle.Esb.AmazonSqs
 
                 try
                 {
-                    _client.DeleteQueueAsync(new DeleteQueueRequest { QueueUrl = _queueUrl }, _cancellationToken).Wait(_cancellationToken);
+                    await _client.DeleteQueueAsync(new DeleteQueueRequest { QueueUrl = _queueUrl }, _cancellationToken).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
                 }
             }
+            finally
+            {
+                _lock.Release();
+            }
         }
 
-        public void Purge()
+        public async Task Purge()
         {
             if (!_queueUrlResolved)
             {
                 return;
             }
 
-            lock (_lock)
+            await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+
+            try
             {
                 try
                 {
-                    _client.PurgeQueueAsync(new PurgeQueueRequest { QueueUrl = _queueUrl }, _cancellationToken).Wait(_cancellationToken);
+                    await _client.PurgeQueueAsync(new PurgeQueueRequest { QueueUrl = _queueUrl }, _cancellationToken).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
                 }
             }
+            finally
+            {
+                _lock.Release();
+            }
         }
 
-        public bool IsEmpty()
+        public async ValueTask<bool> IsEmpty()
         {
             if (!_queueUrlResolved)
             {
-                return true;
+                return await new ValueTask<bool>(true);
             }
 
-            lock (_lock)
-            {
-                try
-                {
-                    var response = _client.GetQueueAttributesAsync(new GetQueueAttributesRequest
-                    {
-                        QueueUrl = _queueUrl,
-                        AttributeNames = _isEmptyAttributeNames
-                    }, _cancellationToken).Result;
+            await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
 
-                    return response.ApproximateNumberOfMessages == 0 &&
-                           response.ApproximateNumberOfMessagesDelayed == 0 &&
-                           response.ApproximateNumberOfMessagesNotVisible == 0;
-                }
-                catch (OperationCanceledException)
+            try
+            {
+                var response = _client.GetQueueAttributesAsync(new GetQueueAttributesRequest
                 {
-                    return true;
-                }
+                    QueueUrl = _queueUrl,
+                    AttributeNames = _isEmptyAttributeNames
+                }, _cancellationToken).Result;
+
+                return await new ValueTask<bool>(response.ApproximateNumberOfMessages == 0 &&
+                                                 response.ApproximateNumberOfMessagesDelayed == 0 &&
+                                                 response.ApproximateNumberOfMessagesNotVisible == 0);
+            }
+            catch (OperationCanceledException)
+            {
+                return await new ValueTask<bool>(true);
+            }
+            finally
+            {
+                _lock.Release();
             }
         }
 
-        public void Enqueue(TransportMessage message, Stream stream)
+        public async Task Enqueue(TransportMessage message, Stream stream)
         {
             Guard.AgainstNull(message, nameof(message));
             Guard.AgainstNull(stream, nameof(stream));
-           
+
             GuardAgainstUnresolvedQueueUrl();
 
-            lock (_lock)
+            await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+
+            try
             {
-                try
+                _client.SendMessageAsync(new SendMessageRequest
                 {
-                    _client.SendMessageAsync(new SendMessageRequest
-                    {
-                        QueueUrl = _queueUrl,
-                        MessageBody = Convert.ToBase64String(stream.ToBytes())
-                    }, _cancellationToken).Wait(_cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                }
+                    QueueUrl = _queueUrl,
+                    MessageBody = Convert.ToBase64String(stream.ToBytes())
+                }, _cancellationToken).Wait(_cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            finally
+            {
+                _lock.Release();
             }
         }
 
-        public ReceivedMessage GetMessage()
+        public async Task<ReceivedMessage> GetMessage()
         {
             if (!_queueUrlResolved)
             {
                 return null;
             }
 
-            lock (_lock)
+            await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+
+            try
             {
                 if (_receivedMessages.Count == 0)
                 {
@@ -240,15 +266,21 @@ namespace Shuttle.Esb.AmazonSqs
 
                 return _receivedMessages.Count > 0 ? _receivedMessages.Dequeue() : null;
             }
+            finally
+            {
+                _lock.Release();
+            }
         }
 
-        public void Acknowledge(object acknowledgementToken)
+        public async Task Acknowledge(object acknowledgementToken)
         {
             Guard.AgainstNull(acknowledgementToken, nameof(acknowledgementToken));
-            
+
             GuardAgainstUnresolvedQueueUrl();
 
-            lock (_lock)
+            await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+
+            try
             {
                 if (!(acknowledgementToken is AcknowledgementToken data))
                 {
@@ -268,9 +300,13 @@ namespace Shuttle.Esb.AmazonSqs
                 {
                 }
             }
+            finally
+            {
+                _lock.Release();
+            }
         }
 
-        public void Release(object acknowledgementToken)
+        public async Task Release(object acknowledgementToken)
         {
             Guard.AgainstNull(acknowledgementToken, nameof(acknowledgementToken));
 
@@ -281,33 +317,36 @@ namespace Shuttle.Esb.AmazonSqs
                 return;
             }
 
-            lock (_lock)
+            await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+
+            try
             {
-                try
+                _client.SendMessageAsync(new SendMessageRequest
                 {
-                    _client.SendMessageAsync(new SendMessageRequest
-                    {
-                        QueueUrl = _queueUrl,
-                        MessageBody = data.MessageBody
-                    }, _cancellationToken).Wait(_cancellationToken);
+                    QueueUrl = _queueUrl,
+                    MessageBody = data.MessageBody
+                }, _cancellationToken).Wait(_cancellationToken);
 
-                    _client.DeleteMessageAsync(_queueUrl, data.ReceiptHandle, _cancellationToken).Wait(_cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                }
+                _client.DeleteMessageAsync(_queueUrl, data.ReceiptHandle, _cancellationToken).Wait(_cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            finally
+            {
+                _lock.Release();
+            }
 
-                if (_acknowledgementTokens.ContainsKey(data.MessageId))
-                {
-                    _acknowledgementTokens.Remove(data.MessageId);
-                }
+            if (_acknowledgementTokens.ContainsKey(data.MessageId))
+            {
+                _acknowledgementTokens.Remove(data.MessageId);
             }
         }
 
         public QueueUri Uri { get; }
         public bool IsStream => false;
 
-        private void GetQueueUrl()
+        private async Task GetQueueUrl()
         {
             try
             {
@@ -315,10 +354,13 @@ namespace Shuttle.Esb.AmazonSqs
 
                 try
                 {
-                    _queueUrl = _client.GetQueueUrlAsync(new GetQueueUrlRequest
+                    _queueUrl = (await _client.GetQueueUrlAsync(new GetQueueUrlRequest
                     {
                         QueueName = Uri.QueueName
-                    }, _cancellationToken).Result.QueueUrl;
+                    }, _cancellationToken)).QueueUrl;
+                }
+                catch (OperationCanceledException)
+                {
                 }
                 catch (AggregateException ex) when (ex.InnerException is TaskCanceledException)
                 {
@@ -328,8 +370,7 @@ namespace Shuttle.Esb.AmazonSqs
             }
             catch (Exception ex)
             {
-                if (ex.InnerException != null &&
-                    !ex.InnerException.Message.Contains("NonExistentQueue"))
+                if (!ex.Message.Contains("NonExistentQueue"))
                 {
                     throw;
                 }
@@ -353,8 +394,9 @@ namespace Shuttle.Esb.AmazonSqs
                 ReceiptHandle = receiptHandle;
             }
 
-            public string MessageId { get; }
             public string MessageBody { get; }
+
+            public string MessageId { get; }
             public string ReceiptHandle { get; }
         }
     }
