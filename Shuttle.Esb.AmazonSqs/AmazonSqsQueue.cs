@@ -63,6 +63,8 @@ namespace Shuttle.Esb.AmazonSqs
                 try
                 {
                     await _client.CreateQueueAsync(new CreateQueueRequest { QueueName = Uri.QueueName }, _cancellationToken).ConfigureAwait(false);
+
+                    OperationCompleted.Invoke(this, new OperationCompletedEventArgs("Create"));
                 }
                 catch (OperationCanceledException)
                 {
@@ -126,6 +128,8 @@ namespace Shuttle.Esb.AmazonSqs
                 try
                 {
                     await _client.DeleteQueueAsync(new DeleteQueueRequest { QueueUrl = _queueUrl }, _cancellationToken).ConfigureAwait(false);
+
+                    OperationCompleted.Invoke(this, new OperationCompletedEventArgs("Drop"));
                 }
                 catch (OperationCanceledException)
                 {
@@ -151,6 +155,8 @@ namespace Shuttle.Esb.AmazonSqs
                 try
                 {
                     await _client.PurgeQueueAsync(new PurgeQueueRequest { QueueUrl = _queueUrl }, _cancellationToken).ConfigureAwait(false);
+
+                    OperationCompleted.Invoke(this, new OperationCompletedEventArgs("Purge"));
                 }
                 catch (OperationCanceledException)
                 {
@@ -204,11 +210,9 @@ namespace Shuttle.Esb.AmazonSqs
 
             try
             {
-                _client.SendMessageAsync(new SendMessageRequest
-                {
-                    QueueUrl = _queueUrl,
-                    MessageBody = Convert.ToBase64String(stream.ToBytes())
-                }, _cancellationToken).Wait(_cancellationToken);
+                await _client.SendMessageAsync(new SendMessageRequest { QueueUrl = _queueUrl, MessageBody = Convert.ToBase64String(await stream.ToBytesAsync()) }, _cancellationToken).ConfigureAwait(false);
+
+                MessageEnqueued.Invoke(this, new MessageEnqueuedEventArgs(message, stream));
             }
             catch (OperationCanceledException)
             {
@@ -236,12 +240,12 @@ namespace Shuttle.Esb.AmazonSqs
 
                     try
                     {
-                        messages = _client.ReceiveMessageAsync(new ReceiveMessageRequest
+                        messages = await _client.ReceiveMessageAsync(new ReceiveMessageRequest
                         {
                             QueueUrl = _queueUrl,
                             MaxNumberOfMessages = _amazonSqsOptions.MaxMessages,
                             WaitTimeSeconds = (int)_amazonSqsOptions.WaitTime.TotalSeconds
-                        }, _cancellationToken).Result;
+                        }, _cancellationToken).ConfigureAwait(false);
                     }
                     catch
                     {
@@ -264,7 +268,14 @@ namespace Shuttle.Esb.AmazonSqs
                     }
                 }
 
-                return _receivedMessages.Count > 0 ? _receivedMessages.Dequeue() : null;
+                var receivedMessage = _receivedMessages.Count > 0 ? _receivedMessages.Dequeue() : null;
+
+                if (receivedMessage != null)
+                {
+                    MessageReceived.Invoke(this, new MessageReceivedEventArgs(receivedMessage));
+                }
+
+                return receivedMessage;
             }
             finally
             {
@@ -294,7 +305,9 @@ namespace Shuttle.Esb.AmazonSqs
 
                 try
                 {
-                    _client.DeleteMessageAsync(_queueUrl, data.ReceiptHandle, _cancellationToken).Wait(_cancellationToken);
+                    await _client.DeleteMessageAsync(_queueUrl, data.ReceiptHandle, _cancellationToken).ConfigureAwait(false);
+
+                    MessageAcknowledged.Invoke(this, new MessageAcknowledgedEventArgs(acknowledgementToken));
                 }
                 catch (OperationCanceledException)
                 {
@@ -321,13 +334,10 @@ namespace Shuttle.Esb.AmazonSqs
 
             try
             {
-                _client.SendMessageAsync(new SendMessageRequest
-                {
-                    QueueUrl = _queueUrl,
-                    MessageBody = data.MessageBody
-                }, _cancellationToken).Wait(_cancellationToken);
+                await _client.SendMessageAsync(new SendMessageRequest { QueueUrl = _queueUrl, MessageBody = data.MessageBody }, _cancellationToken).ConfigureAwait(false);
+                await _client.DeleteMessageAsync(_queueUrl, data.ReceiptHandle, _cancellationToken).ConfigureAwait(false);
 
-                _client.DeleteMessageAsync(_queueUrl, data.ReceiptHandle, _cancellationToken).Wait(_cancellationToken);
+                MessageReleased.Invoke(this, new MessageReleasedEventArgs(acknowledgementToken));
             }
             catch (OperationCanceledException)
             {
@@ -346,6 +356,26 @@ namespace Shuttle.Esb.AmazonSqs
         public QueueUri Uri { get; }
         public bool IsStream => false;
 
+        public event EventHandler<MessageEnqueuedEventArgs> MessageEnqueued = delegate
+        {
+        };
+
+        public event EventHandler<MessageAcknowledgedEventArgs> MessageAcknowledged = delegate
+        {
+        };
+
+        public event EventHandler<MessageReleasedEventArgs> MessageReleased = delegate
+        {
+        };
+
+        public event EventHandler<MessageReceivedEventArgs> MessageReceived = delegate
+        {
+        };
+
+        public event EventHandler<OperationCompletedEventArgs> OperationCompleted = delegate
+        {
+        };
+
         private async Task GetQueueUrl()
         {
             try
@@ -354,10 +384,7 @@ namespace Shuttle.Esb.AmazonSqs
 
                 try
                 {
-                    _queueUrl = (await _client.GetQueueUrlAsync(new GetQueueUrlRequest
-                    {
-                        QueueName = Uri.QueueName
-                    }, _cancellationToken)).QueueUrl;
+                    _queueUrl = (await _client.GetQueueUrlAsync(new GetQueueUrlRequest { QueueName = Uri.QueueName }, _cancellationToken).ConfigureAwait(false)).QueueUrl;
                 }
                 catch (OperationCanceledException)
                 {
