@@ -146,15 +146,12 @@ namespace Shuttle.Esb.AmazonSqs
 
             try
             {
-                try
-                {
-                    await _client.PurgeQueueAsync(new PurgeQueueRequest { QueueUrl = _queueUrl }, _cancellationToken).ConfigureAwait(false);
+                await _client.PurgeQueueAsync(new PurgeQueueRequest { QueueUrl = _queueUrl }, _cancellationToken).ConfigureAwait(false);
 
-                    OperationCompleted.Invoke(this, new OperationCompletedEventArgs("Purge"));
-                }
-                catch (OperationCanceledException)
-                {
-                }
+                OperationCompleted.Invoke(this, new OperationCompletedEventArgs("Purge"));
+            }
+            catch (OperationCanceledException)
+            {
             }
             finally
             {
