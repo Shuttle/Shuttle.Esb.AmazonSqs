@@ -115,22 +115,19 @@ namespace Shuttle.Esb.AmazonSqs
         {
             await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
 
+            if (!_queueUrlResolved)
+            {
+                return;
+            }
+
             try
             {
-                if (!_queueUrlResolved)
-                {
-                    return;
-                }
+                await _client.DeleteQueueAsync(new DeleteQueueRequest { QueueUrl = _queueUrl }, _cancellationToken).ConfigureAwait(false);
 
-                try
-                {
-                    await _client.DeleteQueueAsync(new DeleteQueueRequest { QueueUrl = _queueUrl }, _cancellationToken).ConfigureAwait(false);
-
-                    OperationCompleted.Invoke(this, new OperationCompletedEventArgs("Drop"));
-                }
-                catch (OperationCanceledException)
-                {
-                }
+                OperationCompleted.Invoke(this, new OperationCompletedEventArgs("Drop"));
+            }
+            catch (OperationCanceledException)
+            {
             }
             finally
             {
