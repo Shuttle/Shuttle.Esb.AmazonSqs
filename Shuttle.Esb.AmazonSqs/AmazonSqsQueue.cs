@@ -60,17 +60,14 @@ namespace Shuttle.Esb.AmazonSqs
 
             try
             {
-                try
-                {
-                    await _client.CreateQueueAsync(new CreateQueueRequest { QueueName = Uri.QueueName }, _cancellationToken).ConfigureAwait(false);
+                await _client.CreateQueueAsync(new CreateQueueRequest { QueueName = Uri.QueueName }, _cancellationToken).ConfigureAwait(false);
 
-                    OperationCompleted.Invoke(this, new OperationCompletedEventArgs("Create"));
-                }
-                catch (OperationCanceledException)
-                {
-                }
+                OperationCompleted.Invoke(this, new OperationCompletedEventArgs("Create"));
 
                 await GetQueueUrl();
+            }
+            catch (OperationCanceledException)
+            {
             }
             finally
             {
