@@ -288,27 +288,24 @@ namespace Shuttle.Esb.AmazonSqs
 
             await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
 
+            if (!(acknowledgementToken is AcknowledgementToken data))
+            {
+                return;
+            }
+
+            if (_acknowledgementTokens.ContainsKey(data.MessageId))
+            {
+                _acknowledgementTokens.Remove(data.MessageId);
+            }
+
             try
             {
-                if (!(acknowledgementToken is AcknowledgementToken data))
-                {
-                    return;
-                }
+                await _client.DeleteMessageAsync(_queueUrl, data.ReceiptHandle, _cancellationToken).ConfigureAwait(false);
 
-                if (_acknowledgementTokens.ContainsKey(data.MessageId))
-                {
-                    _acknowledgementTokens.Remove(data.MessageId);
-                }
-
-                try
-                {
-                    await _client.DeleteMessageAsync(_queueUrl, data.ReceiptHandle, _cancellationToken).ConfigureAwait(false);
-
-                    MessageAcknowledged.Invoke(this, new MessageAcknowledgedEventArgs(acknowledgementToken));
-                }
-                catch (OperationCanceledException)
-                {
-                }
+                MessageAcknowledged.Invoke(this, new MessageAcknowledgedEventArgs(acknowledgementToken));
+            }
+            catch (OperationCanceledException)
+            {
             }
             finally
             {
