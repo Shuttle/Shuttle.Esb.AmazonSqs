@@ -172,7 +172,9 @@ namespace Shuttle.Esb.AmazonSqs
         {
             if (!_queueUrlResolved)
             {
-                return await new ValueTask<bool>(true);
+                OperationCompleted.Invoke(this, new OperationCompletedEventArgs("IsEmpty", true));
+
+                return true;
             }
 
             await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
@@ -185,13 +187,17 @@ namespace Shuttle.Esb.AmazonSqs
                     AttributeNames = _isEmptyAttributeNames
                 }, _cancellationToken).Result;
 
-                return await new ValueTask<bool>(response.ApproximateNumberOfMessages == 0 &&
-                                                 response.ApproximateNumberOfMessagesDelayed == 0 &&
-                                                 response.ApproximateNumberOfMessagesNotVisible == 0);
+                var result = response.ApproximateNumberOfMessages == 0 &&
+                             response.ApproximateNumberOfMessagesDelayed == 0 &&
+                             response.ApproximateNumberOfMessagesNotVisible == 0;
+
+                OperationCompleted.Invoke(this, new OperationCompletedEventArgs("IsEmpty", result));
+
+                return result;
             }
             catch (OperationCanceledException)
             {
-                return await new ValueTask<bool>(true);
+                return true;
             }
             finally
             {
