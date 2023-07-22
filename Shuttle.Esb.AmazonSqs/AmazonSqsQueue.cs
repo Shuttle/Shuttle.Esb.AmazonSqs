@@ -113,12 +113,12 @@ namespace Shuttle.Esb.AmazonSqs
 
         public async Task Drop()
         {
-            await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
-
             if (!_queueUrlResolved)
             {
                 return;
             }
+
+            await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
 
             try
             {
