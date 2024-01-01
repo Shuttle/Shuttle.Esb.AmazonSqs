@@ -54,16 +54,26 @@ namespace Shuttle.Esb.AmazonSqs
             GetQueueUrl().GetAwaiter().GetResult();
         }
 
-        public async Task Create()
+        public void Create()
         {
+            CreateAsync().GetAwaiter().GetResult();
+        }
+
+        public async Task CreateAsync()
+        {
+            if (_cancellationToken.IsCancellationRequested)
+            {
+                Operation?.Invoke(this, new OperationEventArgs("[create/cancelled]"));
+                return;
+            }
+
+            Operation?.Invoke(this, new OperationEventArgs("[create/starting]"));
+
             await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
 
             try
             {
                 await _client.CreateQueueAsync(new CreateQueueRequest { QueueName = Uri.QueueName }, _cancellationToken).ConfigureAwait(false);
-
-                OperationCompleted.Invoke(this, new OperationCompletedEventArgs("Create"));
-
                 await GetQueueUrl();
             }
             catch (OperationCanceledException)
@@ -73,6 +83,8 @@ namespace Shuttle.Esb.AmazonSqs
             {
                 _lock.Release();
             }
+        
+            Operation?.Invoke(this, new OperationEventArgs("[create/completed]"));
         }
 
         public void Dispose()
@@ -95,8 +107,7 @@ namespace Shuttle.Esb.AmazonSqs
                             new SendMessageRequest
                                 { QueueUrl = _queueUrl, MessageBody = acknowledgementToken.MessageBody }
                         ).Wait(_operationTimeout);
-                        _client.DeleteMessageAsync(_queueUrl, acknowledgementToken.ReceiptHandle)
-                            .Wait(_operationTimeout);
+                        _client.DeleteMessageAsync(_queueUrl, acknowledgementToken.ReceiptHandle).Wait(_operationTimeout);
                     }
                     catch (OperationCanceledException)
                     {
@@ -111,62 +122,103 @@ namespace Shuttle.Esb.AmazonSqs
             }
         }
 
-        public async Task Drop()
+        public void Drop()
+        {
+            DropAsync().GetAwaiter().GetResult();
+        }
+
+        public async Task DropAsync()
         {
             if (!_queueUrlResolved)
             {
                 return;
             }
+
+            if (_cancellationToken.IsCancellationRequested)
+            {
+                Operation?.Invoke(this, new OperationEventArgs("[drop/cancelled]"));
+                return;
+            }
+
+            Operation?.Invoke(this, new OperationEventArgs("[drop/starting]"));
 
             await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
 
             try
             {
                 await _client.DeleteQueueAsync(new DeleteQueueRequest { QueueUrl = _queueUrl }, _cancellationToken).ConfigureAwait(false);
-
-                OperationCompleted.Invoke(this, new OperationCompletedEventArgs("Drop"));
             }
             catch (OperationCanceledException)
             {
+                Operation?.Invoke(this, new OperationEventArgs("[drop/cancelled]"));
             }
             finally
             {
                 _lock.Release();
             }
+
+            Operation?.Invoke(this, new OperationEventArgs("[drop/completed]"));
         }
 
-        public async Task Purge()
+        public void Purge()
+        {
+            PurgeAsync().GetAwaiter().GetResult();
+        }
+
+        public async Task PurgeAsync()
         {
             if (!_queueUrlResolved)
             {
                 return;
             }
 
+            if (_cancellationToken.IsCancellationRequested)
+            {
+                Operation?.Invoke(this, new OperationEventArgs("[purge/cancelled]"));
+                return;
+            }
+
+            Operation?.Invoke(this, new OperationEventArgs("[purge/starting]"));
+
             await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
 
             try
             {
                 await _client.PurgeQueueAsync(new PurgeQueueRequest { QueueUrl = _queueUrl }, _cancellationToken).ConfigureAwait(false);
-
-                OperationCompleted.Invoke(this, new OperationCompletedEventArgs("Purge"));
             }
             catch (OperationCanceledException)
             {
+                Operation?.Invoke(this, new OperationEventArgs("[purge/cancelled]"));
             }
             finally
             {
                 _lock.Release();
             }
+
+            Operation?.Invoke(this, new OperationEventArgs("[purge/completed]"));
         }
 
-        public async ValueTask<bool> IsEmpty()
+        public bool IsEmpty()
+        {
+            return IsEmptyAsync().GetAwaiter().GetResult();
+        }
+
+        public async ValueTask<bool> IsEmptyAsync()
         {
             if (!_queueUrlResolved)
             {
-                OperationCompleted.Invoke(this, new OperationCompletedEventArgs("IsEmpty", true));
+                Operation?.Invoke(this, new OperationEventArgs("[is-empty]", true));
 
                 return true;
             }
+
+            if (_cancellationToken.IsCancellationRequested)
+            {
+                Operation?.Invoke(this, new OperationEventArgs("[is-empty/cancelled]", true));
+                return true;
+            }
+
+            Operation?.Invoke(this, new OperationEventArgs("[is-empty/starting]"));
 
             await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
 
@@ -182,26 +234,39 @@ namespace Shuttle.Esb.AmazonSqs
                              response.ApproximateNumberOfMessagesDelayed == 0 &&
                              response.ApproximateNumberOfMessagesNotVisible == 0;
 
-                OperationCompleted.Invoke(this, new OperationCompletedEventArgs("IsEmpty", result));
+                Operation?.Invoke(this, new OperationEventArgs("[is-empty]", result));
 
                 return result;
             }
             catch (OperationCanceledException)
             {
-                return true;
+                Operation?.Invoke(this, new OperationEventArgs("[is-empty/cancelled]", true));
             }
             finally
             {
                 _lock.Release();
             }
+
+            return true;
         }
 
-        public async Task Enqueue(TransportMessage message, Stream stream)
+        public void Enqueue(TransportMessage transportMessage, Stream stream)
+        {
+            EnqueueAsync(transportMessage, stream).GetAwaiter().GetResult();
+        }
+
+        public async Task EnqueueAsync(TransportMessage message, Stream stream)
         {
             Guard.AgainstNull(message, nameof(message));
             Guard.AgainstNull(stream, nameof(stream));
 
             GuardAgainstUnresolvedQueueUrl();
+
+            if (_cancellationToken.IsCancellationRequested)
+            {
+                Operation?.Invoke(this, new OperationEventArgs("[enqueue/cancelled]"));
+                return;
+            }
 
             await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
 
@@ -209,10 +274,11 @@ namespace Shuttle.Esb.AmazonSqs
             {
                 await _client.SendMessageAsync(new SendMessageRequest { QueueUrl = _queueUrl, MessageBody = Convert.ToBase64String(await stream.ToBytesAsync()) }, _cancellationToken).ConfigureAwait(false);
 
-                MessageEnqueued.Invoke(this, new MessageEnqueuedEventArgs(message, stream));
+                MessageEnqueued?.Invoke(this, new MessageEnqueuedEventArgs(message, stream));
             }
             catch (OperationCanceledException)
             {
+                Operation?.Invoke(this, new OperationEventArgs("[enqueue/cancelled]"));
             }
             finally
             {
@@ -220,10 +286,21 @@ namespace Shuttle.Esb.AmazonSqs
             }
         }
 
-        public async Task<ReceivedMessage> GetMessage()
+        public ReceivedMessage GetMessage()
+        {
+            return GetMessageAsync().GetAwaiter().GetResult();
+        }
+
+        public async Task<ReceivedMessage> GetMessageAsync()
         {
             if (!_queueUrlResolved)
             {
+                return null;
+            }
+
+            if (_cancellationToken.IsCancellationRequested)
+            {
+                Operation?.Invoke(this, new OperationEventArgs("[get-message/cancelled]"));
                 return null;
             }
 
@@ -233,21 +310,12 @@ namespace Shuttle.Esb.AmazonSqs
             {
                 if (_receivedMessages.Count == 0)
                 {
-                    ReceiveMessageResponse messages;
-
-                    try
+                    var messages = await _client.ReceiveMessageAsync(new ReceiveMessageRequest
                     {
-                        messages = await _client.ReceiveMessageAsync(new ReceiveMessageRequest
-                        {
-                            QueueUrl = _queueUrl,
-                            MaxNumberOfMessages = _amazonSqsOptions.MaxMessages,
-                            WaitTimeSeconds = (int)_amazonSqsOptions.WaitTime.TotalSeconds
-                        }, _cancellationToken).ConfigureAwait(false);
-                    }
-                    catch
-                    {
-                        return null;
-                    }
+                        QueueUrl = _queueUrl,
+                        MaxNumberOfMessages = _amazonSqsOptions.MaxMessages,
+                        WaitTimeSeconds = (int)_amazonSqsOptions.WaitTime.TotalSeconds
+                    }, _cancellationToken).ConfigureAwait(false);
 
                     foreach (var message in messages.Messages)
                     {
@@ -269,22 +337,39 @@ namespace Shuttle.Esb.AmazonSqs
 
                 if (receivedMessage != null)
                 {
-                    MessageReceived.Invoke(this, new MessageReceivedEventArgs(receivedMessage));
+                    MessageReceived?.Invoke(this, new MessageReceivedEventArgs(receivedMessage));
                 }
 
                 return receivedMessage;
+            }
+            catch (OperationCanceledException)
+            {
+                Operation?.Invoke(this, new OperationEventArgs("[get-message/cancelled]"));
             }
             finally
             {
                 _lock.Release();
             }
+
+            return null;
         }
 
-        public async Task Acknowledge(object acknowledgementToken)
+        public void Acknowledge(object acknowledgementToken)
+        {
+            AcknowledgeAsync(acknowledgementToken).GetAwaiter().GetResult();
+        }
+
+        public async Task AcknowledgeAsync(object acknowledgementToken)
         {
             Guard.AgainstNull(acknowledgementToken, nameof(acknowledgementToken));
 
             GuardAgainstUnresolvedQueueUrl();
+
+            if (_cancellationToken.IsCancellationRequested)
+            {
+                Operation?.Invoke(this, new OperationEventArgs("[acknowledge/cancelled]"));
+                return;
+            }
 
             await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
 
@@ -302,10 +387,11 @@ namespace Shuttle.Esb.AmazonSqs
             {
                 await _client.DeleteMessageAsync(_queueUrl, data.ReceiptHandle, _cancellationToken).ConfigureAwait(false);
 
-                MessageAcknowledged.Invoke(this, new MessageAcknowledgedEventArgs(acknowledgementToken));
+                MessageAcknowledged?.Invoke(this, new MessageAcknowledgedEventArgs(acknowledgementToken));
             }
             catch (OperationCanceledException)
             {
+                Operation?.Invoke(this, new OperationEventArgs("[acknowledge/cancelled]"));
             }
             finally
             {
@@ -313,7 +399,12 @@ namespace Shuttle.Esb.AmazonSqs
             }
         }
 
-        public async Task Release(object acknowledgementToken)
+        public void Release(object acknowledgementToken)
+        {
+            ReleaseAsync(acknowledgementToken).GetAwaiter().GetResult();
+        }
+
+        public async Task ReleaseAsync(object acknowledgementToken)
         {
             Guard.AgainstNull(acknowledgementToken, nameof(acknowledgementToken));
 
@@ -324,6 +415,12 @@ namespace Shuttle.Esb.AmazonSqs
                 return;
             }
 
+            if (_cancellationToken.IsCancellationRequested)
+            {
+                Operation?.Invoke(this, new OperationEventArgs("[release/cancelled]"));
+                return;
+            }
+
             await _lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
 
             try
@@ -331,10 +428,11 @@ namespace Shuttle.Esb.AmazonSqs
                 await _client.SendMessageAsync(new SendMessageRequest { QueueUrl = _queueUrl, MessageBody = data.MessageBody }, _cancellationToken).ConfigureAwait(false);
                 await _client.DeleteMessageAsync(_queueUrl, data.ReceiptHandle, _cancellationToken).ConfigureAwait(false);
 
-                MessageReleased.Invoke(this, new MessageReleasedEventArgs(acknowledgementToken));
+                MessageReleased?.Invoke(this, new MessageReleasedEventArgs(acknowledgementToken));
             }
             catch (OperationCanceledException)
             {
+                Operation?.Invoke(this, new OperationEventArgs("[release/cancelled]"));
             }
             finally
             {
@@ -350,25 +448,11 @@ namespace Shuttle.Esb.AmazonSqs
         public QueueUri Uri { get; }
         public bool IsStream => false;
 
-        public event EventHandler<MessageEnqueuedEventArgs> MessageEnqueued = delegate
-        {
-        };
-
-        public event EventHandler<MessageAcknowledgedEventArgs> MessageAcknowledged = delegate
-        {
-        };
-
-        public event EventHandler<MessageReleasedEventArgs> MessageReleased = delegate
-        {
-        };
-
-        public event EventHandler<MessageReceivedEventArgs> MessageReceived = delegate
-        {
-        };
-
-        public event EventHandler<OperationCompletedEventArgs> OperationCompleted = delegate
-        {
-        };
+        public event EventHandler<MessageEnqueuedEventArgs> MessageEnqueued;
+        public event EventHandler<MessageAcknowledgedEventArgs> MessageAcknowledged;
+        public event EventHandler<MessageReleasedEventArgs> MessageReleased;
+        public event EventHandler<MessageReceivedEventArgs> MessageReceived;
+        public event EventHandler<OperationEventArgs> Operation;
 
         private async Task GetQueueUrl()
         {
@@ -389,9 +473,10 @@ namespace Shuttle.Esb.AmazonSqs
 
                 _queueUrlResolved = !string.IsNullOrWhiteSpace(_queueUrl);
             }
-            catch (Exception ex)
+            catch (AmazonSQSException ex)
             {
-                if (!ex.Message.Contains("NonExistentQueue"))
+                if (!ex.ErrorCode.Equals("QueueDoesNotExist", StringComparison.InvariantCulture) &&
+                    !ex.ErrorCode.Equals("AWS.SimpleQueueService.NonExistentQueue", StringComparison.InvariantCulture))
                 {
                     throw;
                 }

@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Shuttle.Esb.AmazonSqs.Tests
 {
-    public static class AmazonSqsFixture
+    public static class AmazonSqsConfiguration
     {
         public static IServiceCollection GetServiceCollection()
         {

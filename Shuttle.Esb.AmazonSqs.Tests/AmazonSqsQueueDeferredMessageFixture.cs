@@ -9,9 +9,17 @@ namespace Shuttle.Esb.AmazonSqs.Tests
         [Test]
         [TestCase(false)]
         [TestCase(true)]
-        public async Task Should_be_able_to_perform_full_processing(bool isTransactionalEndpoint)
+        public void Should_be_able_to_perform_full_processing(bool isTransactionalEndpoint)
         {
-            await TestDeferredProcessing(AmazonSqsFixture.GetServiceCollection(), "amazonsqs://local/{0}", isTransactionalEndpoint);
+            TestDeferredProcessing(AmazonSqsConfiguration.GetServiceCollection(), "amazonsqs://local/{0}", isTransactionalEndpoint);
+        }
+
+        [Test]
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task Should_be_able_to_perform_full_processing_async(bool isTransactionalEndpoint)
+        {
+            await TestDeferredProcessingAsync(AmazonSqsConfiguration.GetServiceCollection(), "amazonsqs://local/{0}", isTransactionalEndpoint);
         }
     }
 }

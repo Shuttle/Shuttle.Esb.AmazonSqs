@@ -8,9 +8,16 @@ namespace Shuttle.Esb.AmazonSqs.Tests
     {
         [TestCase(true)]
         [TestCase(false)]
-        public async Task Should_be_able_handle_errors(bool isTransactionalEndpoint)
+        public void Should_be_able_handle_errors(bool isTransactionalEndpoint)
         {
-            await TestOutboxSending(AmazonSqsFixture.GetServiceCollection(), "amazonsqs://local/{0}", 3, isTransactionalEndpoint);
+            TestOutboxSending(AmazonSqsConfiguration.GetServiceCollection(), "amazonsqs://local/{0}", 3, isTransactionalEndpoint);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task Should_be_able_handle_errors_async(bool isTransactionalEndpoint)
+        {
+            await TestOutboxSendingAsync(AmazonSqsConfiguration.GetServiceCollection(), "amazonsqs://local/{0}", 3, isTransactionalEndpoint);
         }
     }
 }
