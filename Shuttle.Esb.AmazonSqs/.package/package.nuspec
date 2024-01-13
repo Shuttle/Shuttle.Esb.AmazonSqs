@@ -12,10 +12,10 @@
 		<repository type="git" url="https://github.com/Shuttle/Shuttle.Esb.AzureMQ.git" />
 		<projectUrl>https://github.com/Shuttle/Shuttle.Esb.AzureMQ</projectUrl>
 		<description>Amazon Simple Queue Service implementation for use with Shuttle.Esb.</description>
-		<copyright>Copyright (c) 2023, Eben Roux</copyright>
+		<copyright>Copyright (c) 2024, Eben Roux</copyright>
 		<tags>aws sqs amazonsqs amazonmq awssqs awsmq</tags>
 		<dependencies>
-      <dependency id="AWSSDK.SQS" version="3.7.103.11" />
+      <dependency id="AWSSDK.SQS" version="3.7.300.28" />
       <dependency id="Shuttle.Esb" version="14.0.0" />
 		</dependencies>
 	</metadata>
