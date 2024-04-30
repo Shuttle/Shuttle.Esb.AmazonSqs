@@ -11,16 +11,14 @@ namespace Shuttle.Esb.AmazonSqs
         public int MaxMessages { get; set; } = 10;
         public TimeSpan WaitTime { get; set; } = TimeSpan.FromSeconds(20);
 
-        public event EventHandler<ConfigureEventArgs> Configure = delegate
-        {
-        };
+        public event EventHandler<ConfigureEventArgs> Configure;
 
         public void OnConfigureConsumer(object sender, ConfigureEventArgs args)
         {
             Guard.AgainstNull(sender, nameof(sender));
             Guard.AgainstNull(args, nameof(args));
 
-            Configure.Invoke(sender, args);
+            Configure?.Invoke(sender, args);
         }
     }
 }

@@ -56,6 +56,6 @@ The default JSON settings structure is as follows:
 
 | Option | Default | Description |
 | --- | --- | --- | 
-| ServiceUrl |  | The URL to connect to. |
-| MaxMessages | 10 | Specifies the number of messages to fetch from the queue. |
-| WaitTime | 00:00:20 | Specifies the `TimeSpan` duration to perform long-polling. |
+| `ServiceUrl` |  | The URL to connect to. |
+| `MaxMessages` | `10` | Specifies the number of messages to fetch from the queue. |
+| `WaitTime` | `00:00:20` | Specifies the `TimeSpan` duration to perform long-polling. |

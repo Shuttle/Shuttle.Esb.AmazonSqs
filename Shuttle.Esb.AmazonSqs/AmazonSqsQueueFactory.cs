@@ -13,18 +13,13 @@ namespace Shuttle.Esb.AmazonSqs
 
         public AmazonSqsQueueFactory(IOptionsMonitor<AmazonSqsOptions> amazonSqsOptions, ICancellationTokenSource cancellationTokenSource)
         {
-            Guard.AgainstNull(amazonSqsOptions, nameof(amazonSqsOptions));
-            Guard.AgainstNull(cancellationTokenSource, nameof(cancellationTokenSource));
-
-            _amazonSqsOptions = amazonSqsOptions;
-            _cancellationTokenSource = cancellationTokenSource;
+            _amazonSqsOptions = Guard.AgainstNull(amazonSqsOptions, nameof(amazonSqsOptions));
+            _cancellationTokenSource = Guard.AgainstNull(cancellationTokenSource, nameof(cancellationTokenSource));
         }
 
         public IQueue Create(Uri uri)
         {
-            Guard.AgainstNull(uri, "uri");
-
-            var queueUri = new QueueUri(uri).SchemeInvariant(Scheme);
+            var queueUri = new QueueUri(Guard.AgainstNull(uri, nameof(uri))).SchemeInvariant(Scheme);
             var amazonSqsOptions = _amazonSqsOptions.Get(queueUri.ConfigurationName);
 
             if (amazonSqsOptions == null)
