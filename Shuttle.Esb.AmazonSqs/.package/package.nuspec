@@ -16,7 +16,7 @@
 		<copyright>Copyright (c) 2024, Eben Roux</copyright>
 		<tags>aws sqs amazonsqs amazonmq awssqs awsmq</tags>
 		<dependencies>
-      <dependency id="AWSSDK.SQS" version="3.7.400.40" />
+      <dependency id="AWSSDK.SQS" version="3.7.400.57" />
       <dependency id="Shuttle.Esb" version="20.0.0" />
 		</dependencies>
 	</metadata>

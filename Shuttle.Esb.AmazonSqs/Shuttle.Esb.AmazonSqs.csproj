@@ -1,13 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <nullable>enable</nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.SQS" Version="3.7.400.40" />
+    <PackageReference Include="AWSSDK.SQS" Version="3.7.400.57" />
     <PackageReference Include="Shuttle.Esb" Version="20.0.0" />
   </ItemGroup>
 
