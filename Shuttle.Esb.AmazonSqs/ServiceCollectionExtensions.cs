@@ -4,58 +4,57 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Shuttle.Core.Contract;
 
-namespace Shuttle.Esb.AmazonSqs
+namespace Shuttle.Esb.AmazonSqs;
+
+public static class ServiceCollectionExtensions
 {
-    public static class ServiceCollectionExtensions
+    public static IServiceCollection AddAmazonSqs(this IServiceCollection services, Action<AmazonSqsBuilder>? builder = null)
     {
-        public static IServiceCollection AddAmazonSqs(this IServiceCollection services, Action<AmazonSqsBuilder> builder = null)
+        Guard.AgainstNull(services);
+
+        var amazonSqsBuilder = new AmazonSqsBuilder(services);
+
+        builder?.Invoke(amazonSqsBuilder);
+
+        services.AddSingleton<IValidateOptions<AmazonSqsOptions>, AmazonSqsOptionsValidator>();
+
+        foreach (var pair in amazonSqsBuilder.AmazonSqsOptions)
         {
-            Guard.AgainstNull(services, nameof(services));
-
-            var amazonSqsBuilder = new AmazonSqsBuilder(services);
-
-            builder?.Invoke(amazonSqsBuilder);
-
-            services.AddSingleton<IValidateOptions<AmazonSqsOptions>, AmazonSqsOptionsValidator>();
-
-            foreach (var pair in amazonSqsBuilder.AmazonSqsOptions)
+            services.AddOptions<AmazonSqsOptions>(pair.Key).Configure(options =>
             {
-                services.AddOptions<AmazonSqsOptions>(pair.Key).Configure(options =>
+                options.ServiceUrl = pair.Value.ServiceUrl;
+                options.MaxMessages = pair.Value.MaxMessages;
+                options.WaitTime = pair.Value.WaitTime;
+
+                if (options.MaxMessages < 1)
                 {
-                    options.ServiceUrl = pair.Value.ServiceUrl;
-                    options.MaxMessages = pair.Value.MaxMessages;
-                    options.WaitTime = pair.Value.WaitTime;
+                    options.MaxMessages = 1;
+                }
 
-                    if (options.MaxMessages < 1)
-                    {
-                        options.MaxMessages = 1;
-                    }
+                if (options.MaxMessages > 10)
+                {
+                    options.MaxMessages = 10;
+                }
 
-                    if (options.MaxMessages > 10)
-                    {
-                        options.MaxMessages = 10;
-                    }
+                if (options.WaitTime < TimeSpan.Zero)
+                {
+                    options.WaitTime = TimeSpan.Zero;
+                }
 
-                    if (options.WaitTime < TimeSpan.Zero)
-                    {
-                        options.WaitTime = TimeSpan.Zero;
-                    }
+                if (options.WaitTime > TimeSpan.FromSeconds(20))
+                {
+                    options.WaitTime = TimeSpan.FromSeconds(20);
+                }
 
-                    if (options.WaitTime > TimeSpan.FromSeconds(20))
-                    {
-                        options.WaitTime = TimeSpan.FromSeconds(20);
-                    }
-
-                    options.Configure += (sender, args) =>
-                    {
-                        pair.Value.OnConfigureConsumer(sender, args);
-                    };
-                });
-            }
-
-            services.TryAddSingleton<IQueueFactory, AmazonSqsQueueFactory>();
-
-            return services;
+                options.Configure += (sender, args) =>
+                {
+                    pair.Value.OnConfigureConsumer(sender, args);
+                };
+            });
         }
+
+        services.TryAddSingleton<IQueueFactory, AmazonSqsQueueFactory>();
+
+        return services;
     }
 }
