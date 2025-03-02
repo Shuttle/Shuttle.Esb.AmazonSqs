@@ -20,12 +20,12 @@ public class AmazonSqsQueue : IQueue, ICreateQueue, IDropQueue, IPurgeQueue, IDi
 
     private readonly AmazonSQSClient _client;
 
-    private readonly List<string> _isEmptyAttributeNames =
-    [
+    private readonly List<string> _isEmptyAttributeNames = new()
+    {
         "ApproximateNumberOfMessages",
         "ApproximateNumberOfMessagesDelayed",
         "ApproximateNumberOfMessagesNotVisible"
-    ];
+    };
 
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly TimeSpan _operationTimeout = TimeSpan.FromSeconds(30);
